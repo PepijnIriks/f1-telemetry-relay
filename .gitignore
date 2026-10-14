@@ -14,3 +14,4 @@ config/old_races_cache.json
 secrets*.txt
 config/drivers.json
 firewall.log
+zips/
