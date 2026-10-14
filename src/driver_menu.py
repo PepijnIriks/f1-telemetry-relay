@@ -33,11 +33,16 @@ API = f"http://127.0.0.1:{http_port()}/api/driver"
 BG, PANEL, LINE, TEXT, DIM, ACCENT = "#121214", "#1f1f24", "#3b3b44", "#e7e7ea", "#9a9aa4", "#a35fb3"
 
 
+# Never use a proxy for the relay on this same PC. Windows proxy settings (school, VPN, tools) are
+# otherwise also applied to 127.0.0.1, and then the window can't reach the relay at all.
+OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
 def call(body=None):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(API, data=data, headers={"Content-Type": "application/json"},
                                  method="POST" if body is not None else "GET")
-    with urllib.request.urlopen(req, timeout=2) as r:
+    with OPENER.open(req, timeout=3) as r:
         return json.loads(r.read().decode())
 
 
@@ -67,7 +72,7 @@ class Menu:
                        selectcolor=PANEL, activebackground=BG, activeforeground=TEXT,
                        font=("Segoe UI", 9)).pack(anchor="w", padx=8, pady=(0, 8))
         self.shown = None
-        self.todo, self.done, self.tick = queue.Queue(), queue.Queue(), 0
+        self.todo, self.done, self.tick, self.last_error = queue.Queue(), queue.Queue(), 0, ""
         threading.Thread(target=self.worker, daemon=True).start()
         self.todo.put(None)
         self.poll()
@@ -100,8 +105,8 @@ class Menu:
             body = self.todo.get()
             try:
                 r = call(body)
-            except Exception:
-                r = None
+            except Exception as e:
+                r = {"error": f"{type(e).__name__}: {e}"[:120]}
             self.done.put(r)
 
     def poll(self):
@@ -109,9 +114,17 @@ class Menu:
         try:
             while True:
                 r = self.done.get_nowait()
-                if r is None:
+                if "error" in r:
                     self.shown = None
-                    self.now.config(text="relay not running (start start.bat)", fg=DIM)
+                    self.now.config(text="relay not reachable (start start.bat)", fg=DIM)
+                    if r["error"] != self.last_error:
+                        self.last_error = r["error"]
+                        print(f"[F1 driver] {API}: {r['error']}", flush=True)
+                        self.root.title(f"F1 driver - {r['error'][:60]}")
+                elif self.last_error:
+                    self.last_error = ""
+                    self.root.title("F1 driver")
+                    self.draw(r.get("driver", ""), r.get("names", []))
                 elif self.todo.empty():                  # an older answer must not undo a newer click
                     self.draw(r.get("driver", ""), r.get("names", []))
         except queue.Empty:
