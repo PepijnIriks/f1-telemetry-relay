@@ -1,0 +1,14 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Data and caches (never to GitHub)
+exports/
+config/old_races_cache.json
+*.csv
+
+# Secrets: never commit these (the login lives in Azure Key Vault)
+*.local.env
+.env
+secrets*.txt

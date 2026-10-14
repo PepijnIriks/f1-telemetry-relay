@@ -1,0 +1,1244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F1 22 telemetry</title>
+<link rel="icon" href="data:image/png;base64,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">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#121214; --panel:#18181b; --panel2:#1f1f24; --line:#2c2c33; --line2:#3b3b44;
+    --accent:#a35fb3; --accent2:#7c3f8a;
+    --text:#e7e7ea; --dim:#9a9aa4; --faint:#6a6a74;
+    --green:#4caf7d; --red:#d9534f; --amber:#d9a441; --blue:#5b9bd5;
+    --sans:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",Consolas,"Cascadia Mono",ui-monospace,monospace;
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--bg); }
+  body { margin:0; color:var(--text); background:var(--bg); font:14px/1.45 var(--sans); min-height:100vh; }
+  button, input, select { font:inherit; color:var(--text); background:var(--panel2); border:1px solid var(--line2); border-radius:3px; padding:5px 11px; }
+  button { cursor:pointer; } button:hover { border-color:var(--dim); }
+  button:disabled { opacity:.5; cursor:default; }
+  input:focus, select:focus, button:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  .mono { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+
+  /* header */
+  header { display:flex; flex-wrap:wrap; align-items:center; gap:8px 20px; padding:0 20px; background:var(--panel); border-bottom:1px solid var(--line); }
+  .brand { display:flex; align-items:center; gap:10px; padding:9px 0; font-weight:600; }
+  .logo { width:28px; height:28px; border-radius:4px; }
+  nav { display:flex; align-self:stretch; }
+  nav button { border:0; border-bottom:2px solid transparent; border-radius:0; background:none; color:var(--dim); padding:0 16px; font-weight:500; }
+  nav button:hover { color:var(--text); }
+  nav button.on { color:var(--text); border-bottom-color:var(--accent); }
+  .spacer { flex:1; }
+  .st { display:inline-flex; align-items:center; gap:7px; color:var(--dim); font-size:13px; white-space:nowrap; }
+  .st i { width:8px; height:8px; background:var(--red); }
+  .st i.on { background:var(--green); } .st i.warn { background:var(--amber); }
+  .who { display:flex; gap:6px; align-items:center; color:var(--dim); font-size:13px; }
+  .who b { color:var(--text); font-weight:500; }
+  .who .pick { color:var(--amber); font-size:12px; white-space:nowrap; }
+  header input { width:130px; padding:3px 8px; }
+  header .who button { padding:3px 10px; }
+  .dbmsg { margin:12px 20px 0; padding:8px 12px; border-left:3px solid var(--amber); background:var(--panel); color:var(--amber); font-size:13px; }
+  .dbmsg.err { border-left-color:var(--red); color:#e68a86; }
+
+  /* layout */
+  .tab { display:none; padding:14px 20px 48px; } .tab.on { display:block; }
+  .grid { display:grid; grid-template-columns:repeat(12, minmax(0,1fr)); gap:12px; }
+  .s3 { grid-column:span 3; } .s4 { grid-column:span 4; } .s5 { grid-column:span 5; } .s6 { grid-column:span 6; } .s7 { grid-column:span 7; } .s8 { grid-column:span 8; }
+  @media (max-width:1500px) { .s3 { grid-column:span 6; } }
+  @media (max-width:1180px) { .s3,.s4,.s5,.s6,.s7,.s8 { grid-column:span 12; } }
+  .card { display:flex; flex-direction:column; padding:14px 16px 16px; background:var(--panel); border:1px solid var(--line); border-radius:4px; }
+  .card h3 { margin:0 0 12px; font-size:13px; font-weight:600; color:var(--dim); }
+  .card h3 small { font-weight:400; color:var(--faint); margin-left:6px; }
+
+  /* status strip */
+  .strip { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 24px; margin-bottom:12px; color:var(--dim); font-size:13px; }
+  .strip b { color:var(--text); font-weight:500; margin-left:5px; }
+  .live-state { font-weight:600; color:var(--dim); } .live-state.live { color:var(--green); } .live-state.stale { color:var(--amber); }
+  .strip .age { margin-left:auto; color:var(--faint); font-family:var(--mono); font-size:12px; }
+  .banner { display:none; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; padding:8px 12px; background:var(--panel2); border:1px solid var(--accent2); border-radius:4px; }
+  .banner input[type=range] { flex:1; min-width:160px; padding:0; accent-color:var(--accent); }
+
+  /* auto */
+  .big { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:10px; }
+  .speed { font:500 72px/0.9 var(--mono); font-variant-numeric:tabular-nums; }
+  .unit { color:var(--dim); font-size:13px; margin-left:6px; }
+  .gear { font:500 72px/0.9 var(--mono); min-width:48px; text-align:right; color:var(--accent); }
+  .leds { display:flex; gap:3px; margin:14px 0 10px; }
+  .leds i { flex:1; height:6px; background:#26262c; } .leds i.g.on { background:var(--green); } .leds i.r.on { background:var(--red); } .leds i.b.on { background:var(--blue); }
+  .meter { margin:9px 0; }
+  .meter .row { display:flex; justify-content:space-between; font-size:13px; color:var(--dim); margin-bottom:4px; }
+  .meter .row b { color:var(--text); font-weight:500; font-family:var(--mono); font-size:12.5px; }
+  .track { height:6px; background:#26262c; position:relative; overflow:hidden; }
+  .track > div { height:100%; width:0; background:var(--blue); }
+  .track.hot > div { background:var(--red); }
+  .track.mid::after { content:""; position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--faint); }
+  .track .mark { position:absolute; top:0; width:4px; height:6px; margin-left:-2px; background:var(--text); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:auto; padding-top:14px; }
+  .chip { padding:2px 9px; border:1px solid var(--line2); border-radius:3px; font-size:12px; color:var(--faint); display:inline-flex; align-items:center; gap:6px; }
+  .chip.on { color:var(--text); border-color:var(--blue); background:#1e2a38; }
+  .chip.warn.on { border-color:var(--amber); background:#33291a; }
+  .chip.bad.on { border-color:var(--red); background:#3a1f1e; color:#f0a5a2; }
+  .chip .dot { width:9px; height:9px; border-radius:50%; background:#fff; }
+
+  /* chart */
+  .chartwrap { position:relative; flex:1; min-height:280px; } .chartwrap canvas { position:absolute; inset:0; width:100%; height:100%; }
+  .legend { display:flex; gap:18px; color:var(--dim); font-size:12px; margin-top:8px; }
+  .legend b { display:inline-block; width:12px; height:2px; margin-right:6px; vertical-align:middle; }
+
+  /* damage */
+  .dmg { display:grid; grid-template-columns:200px minmax(0,1fr); gap:18px; align-items:start; }
+  @media (max-width:640px) { .dmg { grid-template-columns:1fr; } }
+  .carsvg { width:100%; max-width:220px; height:auto; display:block; margin:0 auto; }
+  .carsvg .part { fill:#34343b; stroke:#0d0d0f; stroke-width:1.5; transition:fill .25s; }
+  .carsvg .body { fill:#26262c; stroke:#0d0d0f; stroke-width:1.5; }
+  .carsvg text { fill:#e7e7ea; font:500 10px var(--mono); text-anchor:middle; pointer-events:none; }
+  .carsvg .lab { fill:#6a6a74; font:400 9px var(--sans); }
+  .pgroup { margin-bottom:10px; } .pgroup h4 { margin:0 0 4px; font-size:11.5px; font-weight:600; color:var(--faint); }
+  .pr { display:grid; grid-template-columns:minmax(0,1fr) 70px 38px; gap:8px; align-items:center; padding:2px 0; font-size:13px; color:var(--dim); }
+  .pr .bar { height:5px; background:#26262c; display:block; } .pr .bar b { display:block; height:100%; width:0; background:var(--faint); }
+  .pr em { font:500 12px var(--mono); font-style:normal; color:var(--text); text-align:right; }
+  .pr.na em { color:var(--faint); }
+  .worst { margin:2px 0 10px; font-size:13px; color:var(--dim); } .worst b { color:var(--text); font-weight:500; }
+  .nodata { color:var(--faint); font-size:12px; margin-top:8px; }
+
+  /* tyres / lap */
+  .tyres { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .tyre { padding:8px 10px; background:var(--panel2); border-left:3px solid var(--green); }
+  .tyre.cold { border-left-color:var(--blue); } .tyre.warm { border-left-color:var(--amber); } .tyre.hot { border-left-color:var(--red); }
+  .tyre .n { font-size:12px; color:var(--dim); } .tyre .a { font:500 24px/1.15 var(--mono); }
+  .tyre .b { font:11.5px/1.5 var(--mono); color:var(--dim); }
+  .rows { margin-top:12px; }
+  .rows > div { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #ffffff0d; color:var(--dim); }
+  .rows > div:last-child { border-bottom:0; } .rows b { color:var(--text); font-weight:500; font-family:var(--mono); font-size:13px; }
+  .pos { display:flex; align-items:baseline; gap:10px; } .pos .p { font:500 40px/1 var(--mono); } .pos small { color:var(--dim); font-size:13px; }
+  .laplist { margin-top:10px; padding-top:8px; border-top:1px solid var(--line); max-height:160px; overflow:auto; }
+  .laplist .rows { margin-top:0; } .laplist .rows > div { padding:2px 0; border:0; }
+  .best { color:#c98bd9 !important; } .invalid { color:var(--red) !important; }
+  .cur b { color:var(--blue); }
+
+  /* track / standings / events */
+  .mapwrap { position:relative; flex:1; min-height:280px; } .mapwrap canvas { position:absolute; inset:0; width:100%; height:100%; }
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; color:var(--faint); font-weight:500; font-size:12px; padding:5px 10px; border-bottom:1px solid var(--line2); white-space:nowrap; }
+  td { padding:5px 10px; border-bottom:1px solid #ffffff0a; white-space:nowrap; }
+  tr.me td { background:#2a1f30; } tr.me td:first-child { box-shadow:inset 3px 0 var(--accent); }
+  td.pn { font-weight:600; width:40px; } .team { display:inline-block; width:3px; height:13px; margin-right:9px; vertical-align:middle; }
+  .pitchip { color:var(--amber); font-weight:600; }
+  .scrollbox { overflow:auto; max-height:400px; } .scrollbox table { min-width:480px; }
+  .events { overflow:auto; max-height:400px; }
+  .events div { display:flex; gap:12px; padding:6px 0; border-bottom:1px solid #ffffff0a; }
+  .events .age { color:var(--faint); font-family:var(--mono); font-size:12px; min-width:46px; }
+  .empty { color:var(--faint); padding:14px 0; }
+
+  /* raw + races */
+  .stats { display:flex; flex-wrap:wrap; gap:0; margin-bottom:12px; border:1px solid var(--line); border-radius:4px; background:var(--panel); }
+  .stat { flex:1; min-width:130px; padding:10px 14px; border-right:1px solid var(--line); } .stat:last-child { border-right:0; }
+  .stat .v { font:500 22px var(--mono); } .stat .l { color:var(--dim); font-size:12px; }
+  .types { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .pill { padding:2px 9px; border:1px solid var(--line2); border-radius:3px; font-size:12px; color:var(--dim); } .pill b { color:var(--text); font-weight:500; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0; }
+  .scroll { overflow-x:auto; }
+  table.monotable { font:12px/1.35 var(--mono); }
+  td.hex { color:var(--faint); max-width:520px; overflow:hidden; text-overflow:ellipsis; }
+  tr.new td { animation:flash .6s; } @keyframes flash { from { background:#5b9bd533; } to { background:transparent; } }
+  tr.click { cursor:pointer; } tr.click:hover td { background:#ffffff08; } tr.sel td { background:#2a1f30; }
+  .tag { display:inline-block; margin-left:6px; padding:0 6px; border:1px solid var(--line2); border-radius:3px; font-size:11px; color:var(--faint); }
+  .two { display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:12px; }
+  @media (max-width:1000px) { .two { grid-template-columns:1fr; } }
+  /* corner comparison */
+  td.ck { width:28px; padding-right:0; } td.ck input { margin:0; accent-color:var(--accent); cursor:pointer; }
+  .cmp { margin-top:12px; }
+  .cmp .head { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; margin-bottom:12px; }
+  .cmp .head h3 { margin:0; }
+  .runkeys { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .runkey { display:flex; flex-direction:column; gap:1px; padding:6px 12px 7px; background:var(--panel2); border-left:3px solid var(--c); min-width:150px; }
+  .runkey b { font-weight:600; } .runkey span { color:var(--dim); font-size:12px; } .runkey .mono { color:var(--text); font-size:12.5px; }
+  .runkey .warnx { color:var(--amber); }
+  .swatch { display:inline-block; width:10px; height:10px; border-radius:2px; background:var(--c); margin-right:7px; vertical-align:-1px; }
+  .cmpchart { position:relative; }
+  .cmpchart svg { display:block; width:100%; height:auto; overflow:visible; }
+  .cmpchart .grid line { stroke:#ffffff14; } .cmpchart .axis text { fill:var(--faint); font:11px var(--mono); }
+  .cmpchart .xlab { fill:var(--dim); font:500 11.5px var(--mono); text-anchor:middle; }
+  .cmpchart rect.hit { fill:transparent; cursor:default; } .cmpchart rect.hit:hover { fill:#ffffff0a; }
+  .tip { position:absolute; pointer-events:none; z-index:5; padding:7px 10px; background:#0d0d0f; border:1px solid var(--line2); border-radius:3px; font-size:12px; line-height:1.5; white-space:nowrap; display:none; }
+  .tip b { font-weight:600; } .tip .mono { font-size:12px; }
+  table.cmpt td, table.cmpt th { text-align:right; } table.cmpt td:first-child, table.cmpt th:first-child { text-align:left; }
+  table.cmpt td.top { color:var(--green); font-weight:600; }
+  table.cmpt td small { color:var(--faint); margin-left:6px; font-size:11px; }
+  table.cmpt tr.sum td { border-top:1px solid var(--line2); color:var(--dim); }
+  .hint { color:var(--faint); font-size:12px; margin:8px 0 0; }
+  /* corner analysis (speed lines per driver) */
+  .ca { margin:4px 0 22px; padding:14px 16px 12px; background:var(--panel2); border:1px solid var(--line); border-radius:4px; }
+  .ca-head { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:10px; }
+  .ca-head h3 { margin:0; font-size:15px; font-weight:600; color:var(--text); }
+  .ca-head h3 span { color:var(--accent); }
+  .ca-nav { display:flex; gap:4px; align-items:center; }
+  .ca-nav button { padding:3px 10px; }
+  .ca-chips { display:flex; flex-wrap:wrap; gap:4px; }
+  .ca-chips button { padding:1px 7px; font:500 11.5px var(--mono); color:var(--dim); background:transparent; border-color:var(--line2); }
+  .ca-chips button.on { color:var(--text); border-color:var(--accent); background:#2a1f30; }
+  .ca-body { display:grid; grid-template-columns:minmax(0,1fr) 230px; gap:16px; align-items:start; }
+  @media (max-width:900px) { .ca-body { grid-template-columns:1fr; } }
+  .ca-chart { position:relative; min-height:200px; }
+  .ca-chart svg { display:block; width:100%; height:auto; overflow:visible; }
+  .ca-chart .gl { stroke:#ffffff12; } .ca-chart .tick { fill:var(--faint); font:11px var(--mono); }
+  .ca-chart .zone { fill:#ffffff07; } .ca-chart .zl { fill:var(--faint); font:10.5px var(--sans); }
+  .ca-chart .apex { stroke:#ffffff30; stroke-dasharray:3 4; }
+  .ca-chart .big { fill:var(--text); font:600 13px var(--mono); paint-order:stroke; stroke:var(--panel2); stroke-width:4px; stroke-linejoin:round; }
+  .ca-chart .bigs { fill:var(--dim); font:11px var(--sans); paint-order:stroke; stroke:var(--panel2); stroke-width:4px; }
+  .ca-chart .lab { fill:var(--dim); font:500 11.5px var(--sans); }
+  .ca-chart .xh { stroke:#ffffff55; display:none; }
+  .ca-side .first { padding-bottom:10px; margin-bottom:10px; border-bottom:1px solid var(--line2); }
+  .ca-side .name { font-weight:600; font-size:15px; }
+  .ca-side .t { font:500 30px/1.1 var(--mono); }
+  .ca-side .gain { font:500 15px var(--mono); color:var(--green); margin-top:2px; }
+  .ca-side .gain small { font:12px var(--sans); color:var(--dim); }
+  .ca-side .row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 10px; padding:5px 0; border-bottom:1px solid #ffffff0a; font-size:13px; }
+  .ca-side .row:last-child { border-bottom:0; }
+  .ca-side .row .d { font:12.5px var(--mono); text-align:right; }
+  .ca-side .row .m { grid-column:1 / -1; color:var(--faint); font-size:11.5px; }
+  .ca-legend { display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:10px; color:var(--dim); font-size:12px; }
+  .ca-legend i { display:inline-block; width:14px; height:8px; border-radius:2px; margin-right:6px; vertical-align:0; }
+  .cmpchart rect.hit { cursor:pointer; } table.cmpt tbody tr { cursor:pointer; } table.cmpt tbody tr.cur td { background:#2a1f30; }
+  @media (max-width:700px) { .speed,.gear { font-size:54px; } header { padding:0 12px; } .tab { padding:12px 12px 40px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><img class="logo" alt="" src="data:image/png;base64,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"><span>F1 22 telemetry</span></div>
+  <nav>
+    <button data-tab="live" class="on">Live</button>
+    <button data-tab="raw">Raw</button>
+    <button data-tab="races">Races</button>
+  </nav>
+  <span class="spacer"></span>
+  <span class="st"><i id="wsdot"></i><span id="wstxt">connecting...</span></span>
+  <span class="st"><i id="gamedot"></i><span id="gametxt">no game data</span></span>
+  <span class="st"><i id="dbdot"></i><span id="dbtxt">database</span></span>
+  <span class="who">driver <b id="driver">-</b><span id="pickpending" class="pick" hidden></span><input id="drivername" placeholder="Name" list="drivernames" title="Pick a name from the list or type a new one"><datalist id="drivernames"></datalist><button id="setdriver">Set</button></span>
+</header>
+<div id="dbmsg"></div>
+
+<!-- ================= LIVE ================= -->
+<section class="tab on" id="tab-live">
+  <div class="banner" id="replaybar">
+    <b>Replay</b> <span id="replayinfo"></span>
+    <button id="rplay">Pause</button>
+    <input type="range" id="rslider" min="0" max="1000" value="0">
+    <span class="mono" id="rtime">0:00</span>
+    <select id="rrate"><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option><option value="8">8x</option></select>
+    <button id="rstop">Back to live</button>
+  </div>
+
+  <div class="strip">
+    <span class="live-state" id="st-text">Waiting for game</span>
+    <span>Driver<b id="st-driver">-</b></span>
+    <span><b id="st-where" style="margin-left:0">-</b></span>
+    <span>Weather<b id="st-weather">-</b></span>
+    <span>Track<b id="st-track">-</b></span>
+    <span>Air<b id="st-air">-</b></span>
+    <span class="age" id="st-age"></span>
+  </div>
+
+  <div class="grid">
+    <div class="card s4">
+      <h3>Car</h3>
+      <div class="big">
+        <div><span class="speed" id="speed">0</span><span class="unit">km/h</span></div>
+        <div class="gear" id="gear">N</div>
+      </div>
+      <div class="leds" id="leds"></div>
+      <div class="meter"><div class="row"><span>RPM</span><b id="rpm">0</b></div><div class="track" id="rpmtrack"><div id="rpmbar"></div></div></div>
+      <div class="meter"><div class="row"><span>Throttle</span><b id="thrt">0%</b></div><div class="track"><div id="thr" style="background:var(--green)"></div></div></div>
+      <div class="meter"><div class="row"><span>Brake</span><b id="brkt">0%</b></div><div class="track"><div id="brk" style="background:var(--red)"></div></div></div>
+      <div class="meter"><div class="row"><span>Steering</span><b id="steert">0%</b></div><div class="track mid"><span class="mark" id="steer" style="left:50%"></span></div></div>
+      <div class="meter"><div class="row"><span>ERS</span><b id="erst">-</b></div><div class="track"><div id="ers" style="background:var(--amber)"></div></div></div>
+      <div class="meter"><div class="row"><span>Fuel</span><b id="fuelt">-</b></div><div class="track"><div id="fuel" style="background:var(--accent)"></div></div></div>
+      <div class="chips">
+        <span class="chip" id="c-drs">DRS</span>
+        <span class="chip warn" id="c-pit">Pitlimiter</span>
+        <span class="chip" id="c-tyre"><i class="dot" id="c-dot" style="background:#666"></i><span id="c-tyret">Tyre -</span></span>
+      </div>
+    </div>
+
+    <div class="card s8">
+      <h3>Last 30 seconds</h3>
+      <div class="chartwrap"><canvas id="trace"></canvas></div>
+      <div class="legend"><span><b style="background:var(--text)"></b>Speed (km/h)</span><span><b style="background:var(--green)"></b>Throttle</span><span><b style="background:var(--red)"></b>Brake</span></div>
+    </div>
+
+    <div class="card s6">
+      <h3>Damage <small>car seen from above, front at the top</small></h3>
+      <div class="dmg">
+        <svg class="carsvg" viewBox="0 0 240 420" role="img" aria-label="Damage map of the car">
+          <rect id="p-floor" class="part" x="76" y="140" width="88" height="210" rx="6"/>
+          <rect id="p-diff" class="part" x="88" y="350" width="64" height="20" rx="2"/>
+          <rect id="p-sl" class="part" x="66" y="168" width="30" height="84" rx="8"/>
+          <rect id="p-sr" class="part" x="144" y="168" width="30" height="84" rx="8"/>
+          <path class="body" d="M120 34 L132 92 L140 150 L144 260 L136 345 L104 345 L96 260 L100 150 L108 92 Z"/>
+          <rect id="p-eng" class="part" x="106" y="196" width="28" height="66" rx="4"/>
+          <rect id="p-gbx" class="part" x="108" y="272" width="24" height="52" rx="3"/>
+          <rect id="p-fwl" class="part" x="34" y="14" width="86" height="22" rx="2"/>
+          <rect id="p-fwr" class="part" x="120" y="14" width="86" height="22" rx="2"/>
+          <rect id="p-rw" class="part" x="60" y="370" width="120" height="26" rx="2"/>
+          <rect id="b2" class="part" x="70" y="78" width="7" height="30"/>
+          <rect id="b3" class="part" x="163" y="78" width="7" height="30"/>
+          <rect id="b0" class="part" x="68" y="290" width="7" height="30"/>
+          <rect id="b1" class="part" x="165" y="290" width="7" height="30"/>
+          <rect id="w2" class="part" x="30" y="66" width="36" height="54" rx="5"/>
+          <rect id="w3" class="part" x="174" y="66" width="36" height="54" rx="5"/>
+          <rect id="w0" class="part" x="26" y="278" width="40" height="64" rx="5"/>
+          <rect id="w1" class="part" x="174" y="278" width="40" height="64" rx="5"/>
+          <text id="wt2" x="48" y="98">-</text><text id="wt3" x="192" y="98">-</text>
+          <text id="wt0" x="46" y="314">-</text><text id="wt1" x="194" y="314">-</text>
+          <text class="lab" x="120" y="412">rear</text>
+          <text class="lab" x="120" y="8">front</text>
+        </svg>
+        <div>
+          <div class="worst" id="worst">No damage data yet.</div>
+          <div id="parts"></div>
+          <div class="chips" style="padding-top:2px">
+            <span class="chip bad" id="f-drs">DRS fault</span>
+            <span class="chip bad" id="f-ers">ERS fault</span>
+            <span class="chip bad" id="f-blown">Engine blown</span>
+            <span class="chip bad" id="f-seized">Engine seized</span>
+          </div>
+          <div class="nodata" id="dmgnote"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card s3">
+      <h3>Tyres and brakes</h3>
+      <div class="tyres" id="tyres"></div>
+      <div class="rows">
+        <div><span>Brakes front L / R</span><b id="brf">-</b></div>
+        <div><span>Brakes rear L / R</span><b id="brr">-</b></div>
+        <div><span>Engine temperature</span><b id="eng">-</b></div>
+        <div><span>Brake bias</span><b id="bias">-</b></div>
+      </div>
+    </div>
+
+    <div class="card s3">
+      <h3>Lap</h3>
+      <div class="pos"><span class="p" id="pos">-</span><small id="lapn">lap -</small></div>
+      <div class="rows" style="margin-top:6px">
+        <div class="cur"><span>Current lap time</span><b id="cur">-:--.---</b></div>
+        <div><span>Last lap</span><b id="last">-:--.---</b></div>
+        <div><span>Best lap</span><b class="best" id="bestlap">-:--.---</b></div>
+        <div><span>Sector</span><b id="sector">-</b></div>
+        <div><span>Penalty</span><b id="pen">-</b></div>
+      </div>
+      <div class="laplist"><div class="rows" id="laplist"></div></div>
+    </div>
+
+    <div class="card s4">
+      <h3>Track</h3>
+      <div class="mapwrap"><canvas id="map"></canvas></div>
+    </div>
+
+    <div class="card s5">
+      <h3>Standings</h3>
+      <div class="scrollbox">
+        <table>
+          <thead><tr><th>P</th><th>Name</th><th>No</th><th>Lap</th><th>Last</th><th>Pit</th></tr></thead>
+          <tbody id="gridrows"></tbody>
+        </table>
+        <div class="empty" id="gridempty">The standings appear as soon as the game sends the participants.</div>
+      </div>
+    </div>
+
+    <div class="card s3">
+      <h3>Events</h3>
+      <div class="events" id="events"><div class="empty">No events yet.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= RAW ================= -->
+<section class="tab" id="tab-raw">
+  <div class="stats">
+    <div class="stat"><div class="v" id="total">0</div><div class="l">packets total</div></div>
+    <div class="stat"><div class="v" id="pps">0</div><div class="l">packets per sec</div></div>
+    <div class="stat"><div class="v" id="kbps">0</div><div class="l">KB per sec</div></div>
+    <div class="stat"><div class="v" id="uptime">0s</div><div class="l">running for</div></div>
+    <div class="stat"><div class="v" id="dbwritten">0</div><div class="l">in database</div></div>
+    <div class="stat"><div class="v" id="dbpending">0</div><div class="l">waiting for database</div></div>
+  </div>
+  <div class="types" id="types"></div>
+  <div class="controls">
+    <select id="filter"><option value="">All packet types</option></select>
+    <button id="pause">Pause view</button>
+    <button id="clear">Clear</button>
+    <span style="color:var(--dim)" id="shown"></span>
+  </div>
+  <div class="card scroll" style="padding:6px 6px 12px">
+    <table class="monotable">
+      <thead><tr><th>Time</th><th>Type</th><th>Frame</th><th>Session time</th><th>Bytes</th><th>Source</th><th>Driver</th><th>First 48 bytes (hex)</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================= RACES ================= -->
+<section class="tab" id="tab-races">
+  <div class="controls" style="margin-top:0"><button id="reload">Refresh</button>
+    <button id="cmpbtn" disabled>Compare corners</button>
+    <select id="cmpmode" title="Which lap per driver">
+      <option value="best">Fastest lap</option>
+      <option value="ideal">Best per corner (all valid laps)</option>
+    </select>
+    <span id="racemsg" style="color:var(--dim)"></span></div>
+  <div id="racenotes"></div>
+  <div class="two">
+    <div class="card scroll">
+      <h3>Stored sessions <small>newest first</small></h3>
+      <table>
+        <thead><tr><th title="Tick runs on the same track to compare them per corner"></th><th>Date</th><th>Driver</th><th>Track</th><th>Session</th><th>Laps</th><th>Best</th><th>Duration</th></tr></thead>
+        <tbody id="sessions"></tbody>
+      </table>
+      <div class="empty" id="sessempty"></div>
+      <p class="hint">Every driver change is a separate run. Tick two or more runs on the same track and click <b>Compare corners</b>.</p>
+    </div>
+    <div class="card scroll">
+      <h3 id="detailtitle">Details</h3>
+      <div id="detail" class="empty">Click a session on the left to see its lap times.</div>
+    </div>
+  </div>
+  <div class="card cmp" id="cmp" style="display:none">
+    <div class="head">
+      <h3 id="cmptitle">Corner comparison</h3>
+      <span class="spacer"></span>
+      <label style="color:var(--dim);font-size:13px">Table shows
+        <select id="cmpmetric">
+          <option value="time">Corner time</option>
+          <option value="min">Minimum speed</option>
+          <option value="entry">Entry speed</option>
+          <option value="exit">Exit speed</option>
+          <option value="brake">Braking point</option>
+          <option value="gas">Full throttle point</option>
+        </select></label>
+      <button id="cmpclose">Close</button>
+    </div>
+    <div id="cmpnotes"></div>
+    <div class="runkeys" id="cmpkeys"></div>
+    <div class="ca" id="ca">
+      <div class="ca-head">
+        <h3>Corner analysis · <span id="caname">-</span></h3>
+        <div class="ca-nav"><button id="caprev" title="Previous corner">&#8249;</button><button id="canext" title="Next corner">&#8250;</button></div>
+        <div class="ca-chips" id="cachips"></div>
+      </div>
+      <div class="ca-body">
+        <div class="ca-chart" id="cachart"></div>
+        <div class="ca-side" id="caside"></div>
+      </div>
+      <div class="ca-legend">
+        <span><i style="background:#d9534f"></i>Braking</span>
+        <span><i style="background:#6a6a74"></i>Entry / exit (rolling or part throttle)</span>
+        <span><i style="background:#4caf7d"></i>Full throttle</span>
+        <span><i style="background:#ffffff18"></i>Shaded = where the corner time is measured</span>
+      </div>
+    </div>
+    <h3 style="margin:0 0 6px;font-size:13px;color:var(--dim)">Time lost per corner vs the fastest driver in that corner <small style="color:var(--faint);font-weight:400">seconds, lower is better</small></h3>
+    <div class="cmpchart" id="cmpchart"><div class="tip" id="cmptip"></div></div>
+    <div class="scroll" style="margin-top:14px"><table class="cmpt" id="cmptable"></table></div>
+    <p class="hint" id="cmphint"></p>
+  </div>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtMs = ms => { if (!ms || ms <= 0) return "-:--.---"; const m = Math.floor(ms/60000), s = ms % 60000; return `${m}:${(s/1000).toFixed(3).padStart(6, "0")}`; };
+const fmtSec = ms => (!ms || ms <= 0) ? "-" : (ms/1000).toFixed(3);
+const fmtDur = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60); return h ? `${h}h ${String(m).padStart(2,"0")}m` : `${m}m ${String(s%60).padStart(2,"0")}s`; };
+const fmtAge = s => { s = Math.max(0, Math.round(s)); return s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s/60)} min` : `${Math.floor(s/3600)} h`; };
+const num = (v, d = "-") => (v === undefined || v === null) ? d : v;
+
+/* ---------------- tabs ---------------- */
+function showTab(name) {
+  if (!["live","raw","races"].includes(name)) name = "live";
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.id === "tab-" + name));
+  if (location.hash !== "#" + name) history.replaceState(null, "", "#" + name);
+  if (name === "races") loadSessions();
+  if (name === "live") { drawTrace(); drawMap(true); }
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
+
+/* ---------------- websocket ---------------- */
+let ws, replay = null, lastPacketAt = 0, lastLiveAt = 0, lastTotal = 0, lastBytes = 0, paused = false, filter = "";
+let clockOffset = 0, eventsData = [], sessionDriver = "";
+function connect() {
+  ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => { $("wsdot").classList.add("on"); $("wstxt").textContent = "connected to relay"; };
+  ws.onclose = () => { $("wsdot").classList.remove("on"); $("wstxt").textContent = "connection lost, retrying..."; setTimeout(connect, 1500); };
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.type === "live") { if (!replay) { lastLiveAt = Date.now(); renderLive(m.d, performance.now() / 1000); } }
+    else if (m.type === "grid") { if (!replay) renderGrid(m.d); }
+    else if (m.type === "events") { if (!replay) { eventsData = m.d; renderEvents(); } }
+    else if (m.type === "packets") onPackets(m);
+    else if (m.type === "stats") onStats(m);
+  };
+}
+
+/* ---------------- LIVE: setup ---------------- */
+const leds = $("leds");
+for (let i = 0; i < 15; i++) { const el = document.createElement("i"); el.className = i < 5 ? "g" : i < 10 ? "r" : "b"; leds.appendChild(el); }
+const tyreNames = ["Rear left", "Rear right", "Front left", "Front right"];
+const tyreOrder = [2, 3, 0, 1];
+$("tyres").innerHTML = tyreOrder.map(i => `<div class="tyre" id="tyre${i}"><div class="n">${tyreNames[i]}</div><div class="a" id="ty${i}">-</div><div class="b" id="tyb${i}">inner -<br>wear -</div></div>`).join("");
+const COMPOUND_COL = { Soft:"#e5484d", Medium:"#e8c547", Hard:"#eeeeee", Inter:"#46b36b", Wet:"#4a8be0" };
+const TEAM_COL = { 0:"#27f4d2", 1:"#e8002d", 2:"#3671c6", 3:"#64c4ff", 4:"#229971", 5:"#ff87bc", 6:"#6692ff", 7:"#b6babd", 8:"#ff8000", 9:"#c92d4b" };
+
+let trace = [], curPos = null, lastMapDraw = 0;
+const trackPts = {};
+let trackKey = "unknown", replayTrack = null;
+
+function loadTrack(key) {
+  if (trackPts[key]) return trackPts[key];
+  let pts = [];
+  try { pts = JSON.parse(localStorage.getItem("f1track:" + key) || "[]"); } catch (e) {}
+  return trackPts[key] = pts;
+}
+function addTrackPoint(key, p) {
+  const pts = loadTrack(key), last = pts[pts.length - 1];
+  if (last && Math.hypot(p[0] - last[0], p[1] - last[1]) < 6) return;
+  if (pts.length < 4000) pts.push(p);
+  if (pts.length % 60 === 0) { try { localStorage.setItem("f1track:" + key, JSON.stringify(pts)); } catch (e) {} }
+}
+function tyreClass(t) { return t < 70 ? "cold" : t <= 105 ? "" : t <= 120 ? "warm" : "hot"; }
+
+/* ---------------- LIVE: damage ---------------- */
+// tyres come in as [RL, RR, FL, FR]
+const PART_GROUPS = [
+  ["Bodywork", [["fwl","Front wing left"],["fwr","Front wing right"],["rw","Rear wing"],["floor","Floor"],["diff","Diffuser"],["side","Sidepods"]]],
+  ["Power unit", [["gearbox","Gearbox"],["engine","Engine"],["ice","Combustion engine (ICE)"],["mguk","MGU-K"],["mguh","MGU-H"],["es","Battery (ES)"],["ce","Electronics (CE)"],["tc","Turbo (TC)"]]],
+  ["Tyres (wear)", [["tw2","Front left"],["tw3","Front right"],["tw0","Rear left"],["tw1","Rear right"]]],
+  ["Brakes (damage)", [["bd2","Front left"],["bd3","Front right"],["bd0","Rear left"],["bd1","Rear right"]]],
+];
+const PART_LABEL = {};
+$("parts").innerHTML = PART_GROUPS.map(([g, items]) => {
+  items.forEach(([k, l]) => PART_LABEL[k] = (g.startsWith("Tyres") ? "Tyre " : g.startsWith("Brakes") ? "Brake " : "") + l.toLowerCase().replace(/^./, c => c));
+  return `<div class="pgroup"><h4>${g}</h4>` + items.map(([k, l]) =>
+    `<div class="pr na" id="pr-${k}"><span>${l}</span><span class="bar"><b></b></span><em>-</em></div>`).join("") + "</div>";
+}).join("");
+PART_LABEL.fwl = "Front wing left"; PART_LABEL.fwr = "Front wing right"; PART_LABEL.rw = "Rear wing";
+PART_LABEL.floor = "Floor"; PART_LABEL.diff = "Diffuser"; PART_LABEL.side = "Sidepods"; PART_LABEL.gearbox = "Gearbox";
+PART_LABEL.engine = "Engine"; PART_LABEL.ice = "Combustion engine"; PART_LABEL.mguk = "MGU-K"; PART_LABEL.mguh = "MGU-H";
+PART_LABEL.es = "Battery"; PART_LABEL.ce = "Electronics"; PART_LABEL.tc = "Turbo";
+const SVG_PARTS = { fwl:["p-fwl"], fwr:["p-fwr"], rw:["p-rw"], floor:["p-floor"], diff:["p-diff"], side:["p-sl","p-sr"], gearbox:["p-gbx"] };
+for (let i = 0; i < 4; i++) { SVG_PARTS["tw" + i] = ["w" + i]; SVG_PARTS["bd" + i] = ["b" + i]; }
+const ENGINE_KEYS = ["engine","ice","mguk","mguh","es","ce","tc"];
+
+function dmgColor(v) {
+  if (v === null || v === undefined) return "#34343b";
+  if (v < 1) return "#3d4a43";
+  const hue = Math.max(0, 95 - v * 1.7);
+  return `hsl(${hue.toFixed(0)} 58% 40%)`;
+}
+let dmgSig = "";
+function setPart(k, v, color) {
+  const row = $("pr-" + k);
+  if (row) {
+    row.classList.toggle("na", v === null || v === undefined);
+    row.lastElementChild.textContent = (v === null || v === undefined) ? "-" : Math.round(v) + "%";
+    const bar = row.querySelector(".bar b");
+    bar.style.width = Math.min(100, Math.max(0, v || 0)) + "%";
+    bar.style.background = color;
+  }
+  for (const id of SVG_PARTS[k] || []) $(id).style.fill = color;
+}
+function renderDamage(L) {
+  const d = L.dmg || null, w = L.tyreWear || null;
+  const sig = JSON.stringify([d, w]);
+  if (sig === dmgSig) return;
+  dmgSig = sig;
+  const vals = {};
+  for (const k of ["fwl","fwr","rw","floor","diff","side","gearbox","engine","ice","mguk","mguh","es","ce","tc"]) vals[k] = d ? num(d[k], null) : null;
+  for (let i = 0; i < 4; i++) {
+    vals["tw" + i] = w ? num(w[i], null) : null;
+    vals["bd" + i] = d && d.brake ? num(d.brake[i], null) : null;
+  }
+  let worst = null;
+  for (const k in vals) {
+    const v = vals[k];
+    // 50% tyre wear is normal: counts less heavily in the colour
+    const col = dmgColor(v === null ? null : k.startsWith("tw") ? v * 0.6 : v);
+    setPart(k, v, col);
+    if (v !== null && !k.startsWith("tw") && (!worst || v > worst[1])) worst = [k, v];
+  }
+  const eng = ENGINE_KEYS.map(k => vals[k]).filter(v => v !== null);
+  $("p-eng").style.fill = dmgColor(eng.length ? Math.max(...eng) : null);
+  for (let i = 0; i < 4; i++) { const v = vals["tw" + i]; $("wt" + i).textContent = v === null ? "-" : Math.round(v) + "%"; }
+  $("f-drs").classList.toggle("on", !!(d && d.drsFault));
+  $("f-ers").classList.toggle("on", !!(d && d.ersFault));
+  $("f-blown").classList.toggle("on", !!(d && d.blown));
+  $("f-seized").classList.toggle("on", !!(d && d.seized));
+  $("worst").innerHTML = !d ? "No damage data yet."
+    : worst && worst[1] >= 1 ? `Worst damage: <b>${PART_LABEL[worst[0]] || worst[0]}</b> ${Math.round(worst[1])}%` : "No damage.";
+  $("dmgnote").textContent = (!d && replay) ? "This recording has no damage data (only races from the new relay have it)." : "";
+}
+
+/* ---------------- LIVE: drawing ---------------- */
+function renderLive(L, t) {
+  const gear = L.gear;
+  $("speed").textContent = num(L.speed, 0);
+  $("gear").textContent = (gear === 0 || gear === undefined || gear === null) ? "N" : gear < 0 ? "R" : gear;
+  const rpm = L.rpm ?? 0, maxRpm = L.maxRpm || 13000;
+  $("rpm").textContent = rpm.toLocaleString("en-GB");
+  $("rpmbar").style.width = Math.min(rpm / maxRpm, 1) * 100 + "%";
+  $("rpmtrack").classList.toggle("hot", rpm / maxRpm > 0.92);
+  const lit = Math.round((L.rev ?? 0) / 100 * 15);
+  [...leds.children].forEach((el, i) => el.classList.toggle("on", i < lit));
+  const thr = (L.throttle ?? 0) * 100, brk = (L.brake ?? 0) * 100, st = L.steer ?? 0;
+  $("thr").style.width = thr + "%"; $("thrt").textContent = Math.round(thr) + "%";
+  $("brk").style.width = brk + "%"; $("brkt").textContent = Math.round(brk) + "%";
+  $("steer").style.left = (50 + st * 50) + "%";
+  $("steert").textContent = Math.round(Math.abs(st) * 100) + "%" + (st < -0.02 ? " L" : st > 0.02 ? " R" : "");
+  if (L.ers != null) { $("ers").style.width = L.ers + "%"; $("erst").textContent = L.ers + "%"; }
+  if (L.fuel != null) {
+    $("fuel").style.width = Math.min(L.fuel / (L.fuelCap || 110), 1) * 100 + "%";
+    $("fuelt").textContent = `${L.fuel.toFixed(1)} kg · ${Number(num(L.fuelLaps, 0)).toFixed(1)} laps`;
+  }
+  $("c-drs").classList.toggle("on", !!L.drs);
+  $("c-pit").classList.toggle("on", !!L.pitLimiter);
+  if (L.compound) {
+    $("c-dot").style.background = COMPOUND_COL[L.compound] || "#888";
+    $("c-tyret").textContent = `Tyre ${L.compound} · ${num(L.tyreAge, 0)} laps`;
+  }
+
+  if (L.tyreSurf) for (let i = 0; i < 4; i++) {
+    const surf = L.tyreSurf[i];
+    $("ty" + i).textContent = surf + "°";
+    $("tyre" + i).className = "tyre " + tyreClass(surf);
+    const inner = L.tyreInner ? L.tyreInner[i] + "°" : "-";
+    const psi = L.tyrePress ? " · " + L.tyrePress[i] + " psi" : "";
+    const wear = L.tyreWear ? L.tyreWear[i] + "%" : "-";
+    $("tyb" + i).innerHTML = `inner ${inner}${psi}<br>wear ${wear}`;
+  }
+  if (L.brakeTemps) {
+    $("brf").textContent = `${L.brakeTemps[2]}° / ${L.brakeTemps[3]}°`;
+    $("brr").textContent = `${L.brakeTemps[0]}° / ${L.brakeTemps[1]}°`;
+  }
+  if (L.engineTemp != null) $("eng").textContent = L.engineTemp + "°";
+  if (L.brakeBias != null) $("bias").textContent = L.brakeBias + "%";
+
+  const lap = L.lap || {}, s = L.session || {};
+  $("pos").textContent = lap.pos ? "P" + lap.pos : "-";
+  $("lapn").textContent = lap.num ? `lap ${lap.num}${s.totalLaps ? " / " + s.totalLaps : ""}` : "lap -";
+  $("cur").textContent = fmtMs(lap.cur);
+  $("last").textContent = fmtMs(lap.last);
+  $("bestlap").textContent = fmtMs(lap.best);
+  $("sector").textContent = lap.sector != null ? lap.sector + 1 : "-";
+  $("pen").textContent = lap.pen ? `+${lap.pen} s` : "–";
+  $("cur").className = lap.invalid ? "invalid" : "";
+  if (lap.laps) {
+    $("laplist").innerHTML = lap.laps.map(l => `<div><span>Lap ${l[0]}</span><b class="${l[1] === lap.best ? "best" : ""} ${l[2] ? "invalid" : ""}">${fmtMs(l[1])}</b></div>`).join("");
+  }
+
+  $("st-where").textContent = (s.track || "-") + " · " + (s.type || "-");
+  $("st-weather").textContent = s.weather || "-";
+  $("st-track").textContent = s.trackTemp != null ? s.trackTemp + "°" : "-";
+  $("st-air").textContent = s.airTemp != null ? s.airTemp + "°" : "-";
+
+  renderDamage(L);
+
+  if (L.pos && !replay) { trackKey = s.track || "unknown"; addTrackPoint(trackKey, L.pos); }
+  if (L.pos) curPos = L.pos;
+
+  trace.push([t, L.speed ?? 0, thr, brk]);
+  while (trace.length && t - trace[0][0] > 30) trace.shift();
+  scheduleDraw();
+}
+
+function renderGrid(rows) {
+  $("gridempty").style.display = rows.length ? "none" : "block";
+  $("gridrows").innerHTML = rows.map(r => {
+    const col = TEAM_COL[r[3]] || "#6a6a74";
+    const pit = r[6] > 0 ? '<span class="pitchip">PIT</span>' : r[7];
+    return `<tr class="${r[8] ? "me" : ""}"><td class="pn">${r[0]}</td><td><i class="team" style="background:${col}"></i>${esc(r[1])}</td>` +
+           `<td class="mono">${r[2] || ""}</td><td class="mono">${r[4]}</td><td class="mono">${fmtMs(r[5])}</td><td>${pit}</td></tr>`;
+  }).join("");
+}
+function serverNow() { return Date.now() / 1000 - clockOffset; }
+function renderEvents() {
+  if (replay) { $("events").innerHTML = '<div class="empty">Not available during a replay.</div>'; return; }
+  $("events").innerHTML = eventsData.length
+    ? eventsData.map(e => `<div><span class="age">${fmtAge(serverNow() - e.t)}</span><span>${esc(e.text)}</span></div>`).join("")
+    : '<div class="empty">No events yet.</div>';
+}
+function updateStrip() {
+  const txt = $("st-text");
+  if (replay) { txt.className = "live-state"; txt.textContent = "Replay"; $("st-age").textContent = ""; $("st-driver").textContent = sessionDriver || "-"; return; }
+  const age = (Date.now() - lastLiveAt) / 1000;
+  if (!lastLiveAt) { txt.className = "live-state"; txt.textContent = "Waiting for game"; $("st-age").textContent = ""; }
+  else if (age < 2.5) { txt.className = "live-state live"; txt.textContent = "Live"; $("st-age").textContent = ""; }
+  else { txt.className = "live-state stale"; txt.textContent = "No new data"; $("st-age").textContent = `last data ${fmtAge(age)} ago`; }
+  renderEvents();
+}
+setInterval(updateStrip, 1000);
+
+let drawQueued = false;
+function scheduleDraw() { if (!drawQueued) { drawQueued = true; requestAnimationFrame(() => { drawQueued = false; drawTrace(); drawMap(); }); } }
+function fit(c) {
+  const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  const w = Math.max(1, Math.round(r.width * d)), h = Math.max(1, Math.round(r.height * d));
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  return [w, h, d];
+}
+function drawTrace() {
+  const c = $("trace"); if (!c.offsetParent) return;
+  const [W, H, d] = fit(c), g = c.getContext("2d");
+  g.clearRect(0, 0, W, H);
+  const pl = 42 * d, pr = 10 * d, pt = 10 * d, pb = 26 * d, pw = W - pl - pr, ph = H - pt - pb;
+  const Y = v => pt + ph * (1 - v / 300);
+  g.font = `${11 * d}px IBM Plex Mono, monospace`; g.textBaseline = "middle"; g.fillStyle = "#6a6a74"; g.strokeStyle = "#ffffff14"; g.lineWidth = d;
+  for (const v of [0, 75, 150, 225, 300]) { g.beginPath(); g.moveTo(pl, Y(v)); g.lineTo(W - pr, Y(v)); g.stroke(); g.textAlign = "right"; g.fillText(v, pl - 8 * d, Y(v)); }
+  g.textAlign = "center"; g.textBaseline = "top";
+  [["-30 s", 0], ["-20 s", 1/3], ["-10 s", 2/3], ["now", 1]].forEach(([l, f]) => g.fillText(l, pl + pw * f, H - pb + 8 * d));
+  if (trace.length < 2) return;
+  const t1 = trace[trace.length - 1][0], t0 = t1 - 30, X = t => pl + (t - t0) / 30 * pw;
+  const line = (idx, scale, stroke, w) => {
+    g.beginPath(); trace.forEach((p, i) => i ? g.lineTo(X(p[0]), Y(p[idx] * scale)) : g.moveTo(X(p[0]), Y(p[idx] * scale)));
+    g.strokeStyle = stroke; g.lineWidth = w * d; g.lineJoin = "round"; g.stroke();
+  };
+  line(2, 3, "#4caf7d", 1.5); line(3, 3, "#d9534f", 1.5); line(1, 1, "#e7e7ea", 2);
+}
+function drawMap(force) {
+  const c = $("map"); if (!c.offsetParent) return;
+  const now = performance.now();
+  if (!force && now - lastMapDraw < 90) return;
+  lastMapDraw = now;
+  const [W, H, d] = fit(c), g = c.getContext("2d");
+  g.clearRect(0, 0, W, H);
+  const pts = replay ? replayTrack : loadTrack(trackKey);
+  if (!pts || pts.length < 8) {
+    g.fillStyle = "#6a6a74"; g.font = `${12 * d}px IBM Plex Sans, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("The track is drawn during your first lap", W / 2, H / 2); return;
+  }
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+  for (const p of pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
+  const pad = 26 * d, sc = Math.min((W - 2 * pad) / ((x1 - x0) || 1), (H - 2 * pad) / ((z1 - z0) || 1));
+  const ox = (W - (x1 - x0) * sc) / 2, oz = (H - (z1 - z0) * sc) / 2;
+  const P = p => [ox + (p[0] - x0) * sc, oz + (p[1] - z0) * sc];
+  g.lineJoin = g.lineCap = "round";
+  g.beginPath(); pts.forEach((p, i) => { const q = P(p); i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); });
+  g.strokeStyle = "#3b3b44"; g.lineWidth = 9 * d; g.stroke();
+  if (curPos) {
+    const q = P(curPos);
+    g.fillStyle = "#a35fb3"; g.beginPath(); g.arc(q[0], q[1], 6 * d, 0, 7); g.fill();
+    g.strokeStyle = "#fff"; g.lineWidth = 1.5 * d; g.stroke();
+  }
+}
+window.addEventListener("resize", () => { drawTrace(); drawMap(true); });
+
+/* ---------------- RAW ---------------- */
+function onPackets(m) {
+  lastPacketAt = Date.now();
+  if (paused) return;
+  const tbody = $("rows"), frag = document.createDocumentFragment();
+  for (const p of m.data) {
+    if (filter && p.name !== filter) continue;
+    const tr = document.createElement("tr"); tr.className = "new";
+    const t = new Date(p.t * 1000);
+    const ts = t.toLocaleTimeString("en-GB") + "." + String(t.getMilliseconds()).padStart(3, "0");
+    for (const v of [ts, p.name, p.frame, p.st, p.size, p.src, p.driver || "-", p.hex]) {
+      const td = document.createElement("td"); td.textContent = v; tr.appendChild(td);
+    }
+    tr.lastChild.className = "hex"; frag.appendChild(tr);
+  }
+  tbody.insertBefore(frag, tbody.firstChild);
+  while (tbody.children.length > 300) tbody.removeChild(tbody.lastChild);
+  $("shown").textContent = `showing last ${tbody.children.length} packets`;
+}
+function onStats(s) {
+  clockOffset = Date.now() / 1000 - s.now;
+  $("total").textContent = s.total.toLocaleString("en-GB");
+  $("pps").textContent = (s.total - lastTotal).toLocaleString("en-GB");
+  $("kbps").textContent = ((s.bytes - lastBytes) / 1024).toFixed(1);
+  lastTotal = s.total; lastBytes = s.bytes;
+  $("uptime").textContent = fmtDur(s.uptime);
+  $("driver").textContent = s.driver || "-";
+  const pk = s.picker || {};
+  $("pickpending").hidden = !pk.pending;
+  if (pk.pending) $("pickpending").textContent = `\u2192 ${pk.pending} in ${Math.ceil(pk.left)} s`;
+  const dl = $("drivernames"), want = (pk.names || []).join("\n");
+  if (dl.dataset.v !== want) { dl.dataset.v = want; dl.innerHTML = (pk.names || []).map(n => `<option value="${esc(n)}">`).join(""); }
+  if (!replay) $("st-driver").textContent = s.driver || "-";
+  const live = Date.now() - lastPacketAt < 2000 && s.total > 0;
+  $("gamedot").classList.toggle("on", live);
+  $("gametxt").textContent = live ? "game data coming in" : (s.total ? "game data stopped" : "waiting for game");
+  const db = s.db;
+  $("dbwritten").textContent = db.written.toLocaleString("en-GB");
+  $("dbpending").textContent = db.pending.toLocaleString("en-GB");
+  const dbled = $("dbdot"); dbled.classList.toggle("on", !!db.connected); dbled.classList.toggle("warn", db.enabled && !db.connected && !db.error);
+  $("dbtxt").textContent = !db.enabled ? "database not linked" : db.error ? "database error" : db.connected ? "database OK" : "database connecting...";
+  if (db.error) $("dbmsg").innerHTML = `<div class="dbmsg err">Database error: ${esc(db.error)}. The relay keeps retrying; no data is lost.</div>`;
+  else if (!db.enabled) $("dbmsg").innerHTML = `<div class="dbmsg">${esc(db.hint || "Database not linked")}. Live and Raw still work, but nothing is stored and the Races tab stays empty.</div>`;
+  else $("dbmsg").innerHTML = "";
+  const names = Object.keys(s.by_type);
+  $("types").innerHTML = names.map(n => `<span class="pill">${esc(n)} <b class="mono">${s.by_type[n].toLocaleString("en-GB")}</b></span>`).join("");
+  const sel = $("filter");
+  if (sel.options.length - 1 !== names.length) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All packet types</option>' + names.map(n => `<option>${esc(n)}</option>`).join("");
+    sel.value = cur;
+  }
+}
+$("filter").onchange = e => { filter = e.target.value; $("rows").innerHTML = ""; };
+$("pause").onclick = () => { paused = !paused; $("pause").textContent = paused ? "Resume view" : "Pause view"; };
+$("clear").onclick = () => { $("rows").innerHTML = ""; };
+$("setdriver").onclick = async () => {
+  const driver = $("drivername").value.trim();
+  await fetch("/api/driver", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({driver}) });
+  $("drivername").value = "";
+};
+$("drivername").addEventListener("keydown", e => { if (e.key === "Enter") $("setdriver").click(); });
+
+/* ---------------- RACES ---------------- */
+let selected = null, sessionList = [];
+const srcQ = s => s.src === "f22" ? "?src=f22" : "";
+async function loadSessions() {
+  $("racemsg").textContent = "loading...";
+  let data;
+  try { data = await (await fetch("/api/sessions")).json(); }
+  catch (e) { $("racemsg").textContent = "relay not reachable"; return; }
+  $("racemsg").textContent = "";
+  const body = $("sessions"); body.innerHTML = ""; $("sessempty").textContent = "";
+  $("racenotes").innerHTML = (data.notes || []).map(n => `<div class="dbmsg err" style="margin:0 0 12px">${esc(n)}</div>`).join("")
+    + (data.info || []).map(n => `<div class="dbmsg" style="margin:0 0 12px">${esc(n)}</div>`).join("");
+  if (data.error) {
+    $("sessempty").textContent = data.error;
+    if (data.db_off) {
+      const b = document.createElement("button"); b.textContent = "Start database"; b.style.marginLeft = "10px";
+      b.onclick = async () => { b.disabled = true; b.textContent = "Starting...";
+        try { await fetch("/api/db/start", { method: "POST" }); } catch (e) {}
+        $("sessempty").textContent = "Database is starting up (2 to 5 minutes). Click Refresh in a moment."; };
+      $("sessempty").appendChild(b);
+    }
+    return;
+  }
+  sessionList = data.sessions || [];
+  for (const k of [...cmpSel]) if (!sessionList.some(s => runKey(s) === k)) cmpSel.delete(k);
+  updateCmpBtn();
+  if (!sessionList.length) { $("sessempty").textContent = (data.info || []).length ? "" : "No sessions found yet. Drive a session with the database linked and come back."; return; }
+  for (const s of sessionList) {
+    const tr = document.createElement("tr"); tr.className = "click"; tr.dataset.uid = s.uid;
+    const key = runKey(s);
+    tr.innerHTML = `<td class="ck"><input type="checkbox" ${cmpSel.has(key) ? "checked" : ""} ${s.corners ? "" : "disabled"}
+        title="${s.corners ? "Select for the corner comparison" : "No corner list for this track"}"></td><td>${esc(new Date(s.start * 1000).toLocaleString("en-GB", {dateStyle:"short", timeStyle:"short"}))}${s.src === "f22" ? '<span class="tag">old</span>' : ""}</td>
+      <td>${esc(s.driver || "-")}</td><td>${esc(s.track)}</td><td>${esc(s.type)}</td><td>${s.laps}</td>
+      <td class="mono">${fmtMs(s.best)}</td><td>${fmtDur(s.end - s.start)}</td>`;
+    tr.onclick = () => selectSession(s.uid);
+    const cb = tr.querySelector("input");
+    cb.onclick = e => { e.stopPropagation(); toggleCmp(s, cb); };
+    if (selected === s.uid) tr.classList.add("sel");
+    body.appendChild(tr);
+  }
+}
+async function selectSession(uid) {
+  selected = uid;
+  document.querySelectorAll("#sessions tr").forEach(r => r.classList.toggle("sel", r.dataset.uid === uid));
+  const s = sessionList.find(x => x.uid === uid);
+  if (!s) return;
+  $("detailtitle").textContent = `${s.track} · ${s.type} · ${s.driver || "unknown"}`;
+  $("detail").className = ""; $("detail").innerHTML = '<div class="empty">loading...</div>';
+  let data;
+  try { data = await (await fetch(`/api/sessions/${encodeURIComponent(uid)}/laps${srcQ(s)}`)).json(); }
+  catch (e) { $("detail").innerHTML = '<div class="empty">relay not reachable</div>'; return; }
+  if (data.error) { $("detail").innerHTML = `<div class="empty">${esc(data.error)}</div>`; return; }
+  const laps = data.laps || [];
+  const valid = laps.filter(l => !l.invalid && l.time > 0);
+  const best = valid.length ? Math.min(...valid.map(l => l.time)) : null;
+  const rows = laps.map(l => `<tr><td>${l.lap}</td><td class="mono ${l.time === best ? "best" : ""} ${l.invalid ? "invalid" : ""}">${fmtMs(l.time)}${l.invalid ? " (invalid)" : ""}</td><td class="mono">${fmtSec(l.s1)}</td><td class="mono">${fmtSec(l.s2)}</td><td class="mono">${fmtSec(l.s3)}</td></tr>`).join("");
+  $("detail").innerHTML = `<p style="margin-top:0"><button id="playbtn">&#9654; Play in Live</button>
+    <span style="color:var(--dim)"> ${s.packets.toLocaleString("en-GB")} ${s.src === "f22" ? "player samples" : "packets"} stored${s.src === "f22" ? " · old race, no damage data" : ""}</span></p>
+    ${laps.length ? `<table><thead><tr><th>Lap</th><th>Time</th><th>S1</th><th>S2</th><th>S3</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">No lap times recorded in this session.</div>'}`;
+  $("playbtn").onclick = () => startReplay(s);
+}
+$("reload").onclick = loadSessions;
+
+/* ---------------- CORNER COMPARISON ---------------- */
+const SERIES = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
+const cmpSel = new Set();
+let cmpData = null;
+const runKey = s => `${s.src === "f22" ? "f22" : "f1"}:${s.uid}`;
+const runOf = key => sessionList.find(s => runKey(s) === key);
+function updateCmpBtn() {
+  $("cmpbtn").disabled = cmpSel.size < 1;
+  $("cmpbtn").textContent = cmpSel.size ? `Compare corners (${cmpSel.size})` : "Compare corners";
+}
+function toggleCmp(s, cb) {
+  const key = runKey(s);
+  if (cb.checked) {
+    const first = runOf([...cmpSel][0]);
+    if (first && first.track_id !== s.track_id) {
+      cb.checked = false;
+      $("racemsg").textContent = `Only runs on the same track can be compared (selected: ${first.track}).`;
+      return;
+    }
+    if (cmpSel.size >= 8) { cb.checked = false; $("racemsg").textContent = "Compare at most 8 runs at once."; return; }
+    cmpSel.add(key);
+  } else cmpSel.delete(key);
+  $("racemsg").textContent = "";
+  updateCmpBtn();
+}
+$("cmpbtn").onclick = loadCompare;
+$("cmpmode").onchange = () => { if ($("cmp").style.display !== "none") loadCompare(); };
+$("cmpmetric").onchange = () => cmpData && renderCmpTable();
+$("cmpclose").onclick = () => { $("cmp").style.display = "none"; };
+
+async function loadCompare() {
+  const keys = [...cmpSel];
+  if (!keys.length) return;
+  const box = $("cmp"); box.style.display = "block";
+  $("cmpkeys").innerHTML = ""; $("cmptable").innerHTML = ""; $("cmphint").textContent = "";
+  $("cmpchart").innerHTML = '<div class="empty">Working out the corners... (the first time per run this reads its raw data and can take a little while)</div><div class="tip" id="cmptip"></div>';
+  $("cmpnotes").innerHTML = "";
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
+  let data;
+  try { data = await (await fetch(`/api/compare?mode=${$("cmpmode").value}&ids=${keys.map(encodeURIComponent).join(",")}`)).json(); }
+  catch (e) { $("cmpchart").innerHTML = '<div class="empty">relay not reachable</div>'; return; }
+  if (data.error) { $("cmpchart").innerHTML = `<div class="empty">${esc(data.error)}</div>`; return; }
+  // colour follows the run (its position in the selection), never its rank
+  data.runs.forEach((r, i) => { r.color = SERIES[i % SERIES.length]; r.s = runOf(r.id) || {}; });
+  cmpData = data;
+  const s0 = data.runs[0].s;
+  $("cmptitle").textContent = `Corner comparison · ${s0.track || ""}`;
+  $("cmpnotes").innerHTML = (data.notes || []).map(n => `<div class="dbmsg" style="margin:0 0 12px">${esc(n)}</div>`).join("");
+  $("cmpkeys").innerHTML = data.runs.map(r => {
+    const s = r.s, when = s.start ? new Date(s.start * 1000).toLocaleString("en-GB", {dateStyle:"short", timeStyle:"short"}) : "";
+    const what = r.empty ? '<span class="warnx">no corner data (no complete laps)</span>'
+      : data.mode === "ideal" ? `<span>best per corner over ${r.laps_used} lap(s)</span>`
+      : `<span>lap ${r.lap} · <span class="mono">${fmtMs(r.lap_time)}</span></span>`;
+    return `<div class="runkey" style="--c:${r.color}"><b>${esc(s.driver || "unknown")}</b><span>${esc(when)} · ${esc(s.type || "")}</span>${what}
+      ${r.invalid_used ? '<span class="warnx">only invalid laps available</span>' : ""}
+      ${r.empty ? "" : `<span>corners total <span class="mono">${fmtSec(r.corner_total)}</span> s</span>`}</div>`;
+  }).join("");
+  drawCmpChart();
+  renderCmpTable();
+  const names = data.corners.map(c => c.corner);
+  $("cachips").innerHTML = names.map(c => `<button data-c="${esc(c)}">${esc(c)}</button>`).join("");
+  $("cachips").querySelectorAll("button").forEach(b => b.onclick = () => showCorner(b.dataset.c));
+  $("ca").style.display = names.length ? "block" : "none";
+  if (names.length) showCorner(names.includes(caCorner) ? caCorner : names[0]);
+}
+
+function cornerBest(c, metric) {
+  const vals = cmpData.runs.map(r => r.corners[c] && r.corners[c][metric]).filter(v => v !== null && v !== undefined);
+  if (!vals.length) return null;
+  return metric === "time" ? Math.min(...vals) : ["min", "entry", "exit"].includes(metric) ? Math.max(...vals) : null;
+}
+
+function drawCmpChart() {
+  const wrap = $("cmpchart"), runs = cmpData.runs.filter(r => !r.empty), corners = cmpData.corners.map(c => c.corner);
+  if (!runs.length || !corners.length) { wrap.innerHTML = '<div class="empty">No corner data for these runs.</div><div class="tip" id="cmptip"></div>'; return; }
+  const W = Math.max(wrap.clientWidth || 900, 320), H = 230, ml = 46, mr = 8, mt = 10, mb = 26;
+  const deltas = corners.map(c => { const b = cornerBest(c, "time"); return runs.map(r => r.corners[c] ? (r.corners[c].time - b) / 1000 : null); });
+  let ymax = Math.max(0.05, ...deltas.flat().filter(v => v !== null));
+  const step = ymax <= 0.1 ? 0.02 : ymax <= 0.25 ? 0.05 : ymax <= 0.5 ? 0.1 : ymax <= 1 ? 0.2 : ymax <= 2.5 ? 0.5 : 1;
+  ymax = Math.ceil(ymax / step) * step;
+  const y = v => mt + (H - mt - mb) * (1 - v / ymax), base = y(0);
+  const band = (W - ml - mr) / corners.length, gap = 2;
+  const bw = Math.max(2, Math.min(18, (band * 0.72 - gap * (runs.length - 1)) / runs.length));
+  const group = bw * runs.length + gap * (runs.length - 1);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Time lost per corner per driver"><g class="grid axis">`;
+  for (let v = 0; v <= ymax + 1e-9; v += step) {
+    svg += `<line x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}"/><text x="${ml - 6}" y="${y(v) + 4}" text-anchor="end">${v === 0 ? "0" : "+" + v.toFixed(step < 0.1 ? 2 : 1)}</text>`;
+  }
+  svg += "</g>";
+  corners.forEach((c, i) => {
+    const x0 = ml + band * i + (band - group) / 2;
+    const every = Math.ceil(30 / band);   // thin out the labels on narrow screens
+    if (i % every === 0) svg += `<text class="xlab" x="${ml + band * (i + 0.5)}" y="${H - 8}">${esc(c)}</text>`;
+    runs.forEach((r, j) => {
+      const d = deltas[i][j];
+      if (d === null) return;
+      const x = x0 + j * (bw + gap), top = y(d), h = Math.max(base - top, 1.5), rr = Math.min(4, bw / 2, h);
+      // bar anchored to the baseline, rounded only at the data end
+      svg += `<path fill="${r.color}" d="M${x},${base} V${base - h + rr} Q${x},${base - h} ${x + rr},${base - h} H${x + bw - rr} Q${x + bw},${base - h} ${x + bw},${base - h + rr} V${base} Z"/>`;
+    });
+    svg += `<rect class="hit" data-i="${i}" x="${ml + band * i}" y="${mt}" width="${band}" height="${H - mt - mb}"/>`;
+  });
+  svg += `<line x1="${ml}" x2="${W - mr}" y1="${base}" y2="${base}" stroke="#ffffff40"/></svg>`;
+  wrap.innerHTML = svg + '<div class="tip" id="cmptip"></div>';
+  const tip = $("cmptip");
+  wrap.querySelectorAll("rect.hit").forEach(el => {
+    el.onmousemove = e => {
+      const c = corners[+el.dataset.i], best = cornerBest(c, "time");
+      const rows = runs.map(r => ({ r, k: r.corners[c] })).filter(o => o.k).sort((a, b) => a.k.time - b.k.time);
+      tip.innerHTML = `<b>${esc(c)}</b><br>` + rows.map(({ r, k }) =>
+        `<span class="swatch" style="--c:${r.color}"></span>${esc(r.s.driver || "?")} <span class="mono">${(k.time / 1000).toFixed(3)} s ${k.time === best ? "(fastest)" : "+" + ((k.time - best) / 1000).toFixed(3)}</span> · min ${Math.round(k.min)} km/h`).join("<br>");
+      tip.style.display = "block";
+      const box = wrap.getBoundingClientRect();
+      let lx = e.clientX - box.left + 14; if (lx + tip.offsetWidth > box.width) lx = e.clientX - box.left - tip.offsetWidth - 14;
+      tip.style.left = Math.max(0, lx) + "px"; tip.style.top = Math.max(0, e.clientY - box.top - tip.offsetHeight - 8) + "px";
+    };
+    el.onmouseleave = () => { tip.style.display = "none"; };
+    el.onclick = () => { showCorner(corners[+el.dataset.i]); $("ca").scrollIntoView({ behavior: "smooth", block: "nearest" }); };
+  });
+}
+
+function renderCmpTable() {
+  const metric = $("cmpmetric").value, runs = cmpData.runs, corners = cmpData.corners.map(c => c.corner);
+  const fmt = (v) => v === null || v === undefined ? "-" : metric === "time" ? (v / 1000).toFixed(3)
+    : ["brake", "gas"].includes(metric) ? `${Math.round(v)} m` : `${Math.round(v)}`;
+  const unit = { time: "s", min: "km/h", entry: "km/h", exit: "km/h", brake: "", gas: "" }[metric];
+  let html = `<thead><tr><th>Corner</th>${runs.map(r => `<th><span class="swatch" style="--c:${r.color}"></span>${esc(r.s.driver || "?")}${unit ? ` <small style="color:var(--faint)">${unit}</small>` : ""}</th>`).join("")}${metric === "time" ? "<th>Fastest</th>" : ""}</tr></thead><tbody>`;
+  const wins = runs.map(() => 0);
+  for (const c of corners) {
+    const best = cornerBest(c, metric), tbest = cornerBest(c, "time");
+    let winner = "";
+    html += `<tr data-c="${esc(c)}" class="${c === caCorner ? "cur" : ""}"><td class="mono">${esc(c)}</td>` + runs.map((r, j) => {
+      const k = r.corners[c], v = k ? k[metric] : null;
+      const top = best !== null && v === best && runs.length > 1;
+      if (k && k.time === tbest) { wins[j]++; winner = r.s.driver || "?"; }
+      const extra = metric === "time" && k && !top && best !== null ? `<small>+${((v - best) / 1000).toFixed(3)}</small>` : "";
+      return `<td class="mono ${top ? "top" : ""}">${fmt(v)}${extra}</td>`;
+    }).join("") + (metric === "time" ? `<td>${esc(winner)}</td>` : "") + "</tr>";
+  }
+  if (metric === "time") {
+    html += `<tr class="sum"><td>All corners</td>${runs.map(r => `<td class="mono">${r.empty ? "-" : (r.corner_total / 1000).toFixed(3)}</td>`).join("")}<td></td></tr>`;
+    html += `<tr class="sum"><td>Corners won</td>${wins.map(w => `<td class="mono">${w}</td>`).join("")}<td></td></tr>`;
+  }
+  $("cmptable").innerHTML = html + "</tbody>";
+  $("cmptable").querySelectorAll("tbody tr[data-c]").forEach(tr => tr.onclick = () => {
+    showCorner(tr.dataset.c); $("ca").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+  $("cmphint").textContent = {
+    time: "Corner time = time from just before the braking zone until just after the corner (about 150 m before to 100 m after the apex, never overlapping the next corner). Green = fastest.",
+    min: "Lowest speed in the corner (apex speed). Green = highest.",
+    entry: "Speed at the start of the corner zone. Green = highest.",
+    exit: "Speed at the end of the corner zone (how well they got out). Green = highest.",
+    brake: "Where they started braking, in metres before the official corner position. A smaller number = braking later.",
+    gas: "Where they were back on full throttle, in metres after the official corner position. A smaller number = earlier on the throttle.",
+  }[metric] + " Corner numbers are the official F1 numbers; the lap the drivers changed seats never counts.";
+}
+window.addEventListener("resize", () => {
+  if (cmpData && $("cmp").style.display !== "none") { drawCmpChart(); if (caCorner) drawCorner(); }
+});
+
+/* ---- corner analysis: speed lines of every driver through one corner ---- */
+const PHASE = { B: "#d9534f", C: "#6a6a74", T: "#4caf7d" };
+const traceCache = new Map();
+let caCorner = null, caReq = 0;
+async function getTrace(id, lap) {
+  const key = `${id}|${lap}`;
+  if (!traceCache.has(key)) {
+    traceCache.set(key, fetch(`/api/trace?id=${encodeURIComponent(id)}&lap=${lap}`).then(r => r.json())
+      .catch(() => ({ error: "relay not reachable" })));
+  }
+  return traceCache.get(key);
+}
+function cornerList() { return cmpData ? cmpData.corners.map(c => c.corner) : []; }
+$("caprev").onclick = () => { const l = cornerList(), i = l.indexOf(caCorner); if (l.length) showCorner(l[(i - 1 + l.length) % l.length]); };
+$("canext").onclick = () => { const l = cornerList(), i = l.indexOf(caCorner); if (l.length) showCorner(l[(i + 1) % l.length]); };
+
+async function showCorner(c) {
+  caCorner = c;
+  $("caname").textContent = c;
+  $("cachips").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.c === c));
+  $("cmptable").querySelectorAll("tbody tr[data-c]").forEach(tr => tr.classList.toggle("cur", tr.dataset.c === c));
+  const req = ++caReq;
+  const runs = cmpData.runs.filter(r => r.corners && r.corners[c]);
+  if (!runs.length) { $("cachart").innerHTML = '<div class="empty">No data for this corner.</div>'; $("caside").innerHTML = ""; return; }
+  if (!runs.every(r => traceCache.has(`${r.id}|${r.corners[c].lap}`))) $("cachart").innerHTML = '<div class="empty">loading the speed traces...</div>';
+  const traces = await Promise.all(runs.map(r => getTrace(r.id, r.corners[c].lap)));
+  if (req !== caReq) return;                       // the user already clicked another corner
+  caView = { c, runs: runs.map((r, i) => ({ r, k: r.corners[c], tr: traces[i] })).filter(o => o.tr && !o.tr.error) };
+  drawCorner();
+}
+let caView = null;
+
+function drawCorner() {
+  const wrap = $("cachart"), V = caView;
+  if (!V || !V.runs.length) { wrap.innerHTML = '<div class="empty">No speed trace stored for these laps.</div>'; $("caside").innerHTML = ""; return; }
+  const lay = V.runs[0].tr.layout.find(x => x.corner === V.c);
+  if (!lay) { wrap.innerHTML = '<div class="empty">This corner is not in the corner list.</div>'; return; }
+  const v0 = lay.v0, v1 = lay.v1;
+  // per driver: points inside the view [distance, speed, throttle, brake, time]
+  for (const o of V.runs) {
+    const t = o.tr, st = t.step, i0 = Math.max(0, Math.floor(v0 / st)), i1 = Math.min(t.speed.length - 1, Math.ceil(v1 / st));
+    o.pts = [];
+    for (let i = i0; i <= i1; i++) o.pts.push([i * st, t.speed[i], t.throttle[i], t.brake[i], t.time[i]]);
+  }
+  const all = V.runs.flatMap(o => o.pts.map(p => p[1]));
+  const ymin = Math.max(0, Math.floor((Math.min(...all) - 15) / 50) * 50), ymax = Math.ceil((Math.max(...all) + 10) / 50) * 50;
+  const W = Math.max(wrap.clientWidth || 800, 300), ml = W < 500 ? 64 : 92, mr = 14, mt = 26;
+  const ph = 150 + Math.min(80, W / 10), barH = 9, barGap = 9, bars = V.runs.length;
+  const H = mt + ph + 22 + bars * (barH + barGap) + 4;
+  const x = d => ml + (d - v0) / Math.max(v1 - v0, 1) * (W - ml - mr);
+  const y = v => mt + (1 - (v - ymin) / Math.max(ymax - ymin, 1)) * ph;
+  const span = v1 - v0, tick = span > 600 ? 200 : span > 300 ? 100 : 50;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Speed through ${esc(V.c)} per driver">`;
+  // measured zone, distance grid, speed grid
+  svg += `<rect class="zone" x="${x(Math.max(lay.z0, v0))}" y="${mt}" width="${x(Math.min(lay.z1, v1)) - x(Math.max(lay.z0, v0))}" height="${ph}"/>`;
+  for (let d = 0; d <= span + 1e-6; d += tick) {
+    svg += `<line class="gl" x1="${x(v0 + d)}" x2="${x(v0 + d)}" y1="${mt - 4}" y2="${mt + ph}"/><text class="tick" x="${x(v0 + d)}" y="${mt - 9}" text-anchor="${d === 0 ? "start" : d + tick > span + 1e-6 && x(v0 + d) > W - mr - 20 ? "end" : "middle"}">${d} m</text>`;
+  }
+  for (let v = ymin; v <= ymax; v += 50) {
+    if (v > ymin) svg += `<line class="gl" x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}"/>`;
+    svg += `<text class="tick" x="${ml - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  }
+  svg += `<text class="tick" x="${ml - 8}" y="${mt - 9}" text-anchor="end">km/h</text>`;
+  svg += `<line class="apex" x1="${x(lay.apex)}" x2="${x(lay.apex)}" y1="${mt}" y2="${mt + ph}"/>`;
+  // fastest driver in this corner (corner time, same number as the table)
+  const order = [...V.runs].sort((a, b) => a.k.time - b.k.time), best = order[0];
+  // speed lines: slowest first so the fastest is drawn on top
+  for (const o of [...order].reverse()) {
+    svg += `<polyline fill="none" stroke="${o.r.color}" stroke-width="2" stroke-linejoin="round" points="${o.pts.map(p => `${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join(" ")}"/>`;
+  }
+  // markers: lowest speed of each driver (ringed), label only for the fastest driver
+  for (const o of order) {
+    const lo = o.pts.reduce((a, p) => p[1] < a[1] ? p : a, o.pts[0]);
+    o.low = lo;
+    svg += `<circle cx="${x(lo[0])}" cy="${y(lo[1])}" r="4" fill="${o.r.color}" stroke="var(--panel2)" stroke-width="2"/>`;
+  }
+  const bl = best.low, lx = x(bl[0]);
+  svg += `<text class="big" x="${lx}" y="${Math.min(y(bl[1]) + 22, mt + ph - 4)}" text-anchor="middle">${Math.round(best.k.min)} km/h</text>`;
+  // top speed into the corner
+  const top = Math.max(...V.runs.map(o => Math.max(...o.pts.filter(p => p[0] <= lay.apex).map(p => p[1]), 0)));
+  const ty = Math.min(y(top) + 16, mt + ph - 20);
+  svg += `<text class="bigs" x="${ml + 6}" y="${ty}">top speed</text><text class="big" x="${ml + 6}" y="${ty + 16}">${Math.round(top)} km/h</text>`;
+  svg += `<text class="zl" x="${x(lay.apex) + 5}" y="${mt + 11}">${esc(V.c)} (official position)</text>`;
+  // phase bars per driver: braking / entry-exit / full throttle
+  const by0 = mt + ph + 22;
+  order.forEach((o, j) => {                         // fastest driver on top, same order as the panel on the right
+    const yy = by0 + j * (barH + barGap);
+    svg += `<text class="lab" x="${ml - 8}" y="${yy + barH - 1}" text-anchor="end">${esc(trunc(o.r.s.driver || "?", W < 500 ? 8 : 12))}</text>`;
+    svg += `<rect x="${ml - 5}" y="${yy}" width="3" height="${barH}" fill="${o.r.color}"/>`;
+    const seg = [];
+    for (const p of o.pts) {
+      const k = p[3] > 0.1 ? "B" : p[2] >= 0.95 ? "T" : "C";
+      if (seg.length && seg[seg.length - 1].k === k) seg[seg.length - 1].d1 = p[0];
+      else seg.push({ k, d0: p[0], d1: p[0] });
+    }
+    seg.forEach((g, i) => {
+      const a = x(g.d0), b = x(i + 1 < seg.length ? seg[i + 1].d0 : g.d1), w = Math.max(b - a - 1.5, 0.5);
+      svg += `<rect x="${a}" y="${yy}" width="${w}" height="${barH}" rx="2" fill="${PHASE[g.k]}"/>`;
+    });
+  });
+  svg += `<line class="xh" id="caxh" x1="0" x2="0" y1="${mt}" y2="${H - 4}"/>`;
+  svg += `<rect id="cahit" x="${ml}" y="${mt}" width="${W - ml - mr}" height="${H - mt}" fill="transparent"/></svg>`;
+  wrap.innerHTML = svg + '<div class="tip" id="catip"></div>';
+
+  // hover: speed of every driver at that point + how much time they have lost there so far
+  const tip = $("catip"), xh = $("caxh");
+  $("cahit").onmousemove = e => {
+    const box = wrap.getBoundingClientRect(), px = (e.clientX - box.left) * (W / box.width);
+    const d = v0 + (px - ml) / (W - ml - mr) * (v1 - v0);
+    const at = o => o.pts[Math.max(0, Math.min(o.pts.length - 1, Math.round((d - o.pts[0][0]) / o.tr.step)))];
+    const rows = order.map(o => ({ o, p: at(o) }));
+    const t0 = o => o.pts[0][4];
+    const ref = rows[0].p[4] - t0(rows[0].o);
+    tip.innerHTML = `<b>${Math.max(0, Math.round(d - v0))} m</b>${Math.abs(d - lay.apex) < 15 ? " · apex" : ""}<br>` + rows.map(({ o, p }) => {
+      const ph = p[3] > 0.1 ? "braking" : p[2] >= 0.95 ? "full throttle" : "rolling / part throttle";
+      const gap = (p[4] - t0(o) - ref) / 1000;
+      return `<span class="swatch" style="--c:${o.r.color}"></span>${esc(o.r.s.driver || "?")} <span class="mono">${Math.round(p[1])} km/h</span> · ${ph}` +
+        (o === rows[0].o ? "" : ` · <span class="mono">${gap >= 0 ? "+" : ""}${gap.toFixed(3)} s</span>`);
+    }).join("<br>");
+    xh.setAttribute("x1", px); xh.setAttribute("x2", px); xh.style.display = "block";
+    tip.style.display = "block";
+    let tx = e.clientX - box.left + 14; if (tx + tip.offsetWidth > box.width) tx = e.clientX - box.left - tip.offsetWidth - 14;
+    tip.style.left = Math.max(0, tx) + "px"; tip.style.top = Math.max(0, e.clientY - box.top - tip.offsetHeight - 10) + "px";
+  };
+  $("cahit").onmouseleave = () => { tip.style.display = "none"; xh.style.display = "none"; };
+
+  // side panel: fastest driver, how much faster, the rest
+  const second = order[1];
+  let side = `<div class="first"><div class="name"><span class="swatch" style="--c:${best.r.color}"></span>${esc(best.r.s.driver || "?")}</div>
+    <div class="t">${(best.k.time / 1000).toFixed(3)}<span style="font-size:15px;color:var(--dim)"> s</span></div>`;
+  if (second) side += `<div class="gain">${((second.k.time - best.k.time) / 1000).toFixed(3)} s faster <small>than ${esc(second.r.s.driver || "?")}</small></div>`;
+  side += `</div>`;
+  side += order.map((o, i) => `<div class="row"><span><span class="swatch" style="--c:${o.r.color}"></span>${esc(o.r.s.driver || "?")}</span>
+      <span class="d">${i ? "+" + ((o.k.time - best.k.time) / 1000).toFixed(3) : (o.k.time / 1000).toFixed(3)} s</span>
+      <span class="m">min ${Math.round(o.k.min)} km/h · ${o.k.brake != null ? `brakes ${Math.round(o.k.brake)} m before` : "no braking"} · ${cmpData.mode === "ideal" ? `lap ${o.k.lap}` : `exit ${Math.round(o.k.exit)} km/h`}</span></div>`).join("");
+  $("caside").innerHTML = side;
+}
+const trunc = (t, n) => t.length > n ? t.slice(0, n - 1) + "…" : t;
+
+/* ---------------- REPLAY ---------------- */
+async function startReplay(s) {
+  const btn = $("playbtn");
+  btn.disabled = true; btn.textContent = "Loading...";
+  let data;
+  try { data = await (await fetch(`/api/sessions/${encodeURIComponent(s.uid)}/replay${srcQ(s)}`)).json(); }
+  catch (e) { alert("Loading the replay failed"); btn.disabled = false; btn.innerHTML = "&#9654; Play in Live"; return; }
+  btn.disabled = false; btn.innerHTML = "&#9654; Play in Live";
+  if (data.error) { alert(data.error); return; }
+  if (!data.tel || !data.tel.length) { alert("No telemetry found for this session."); return; }
+  replay = { tel: data.tel, lap: data.lap || [], pos: data.pos || [], stat: data.stat || [], dmg: data.dmg || [],
+             t0: data.tel[0][0], t1: data.tel[data.tel.length - 1][0], playing: true, rate: 1, last: performance.now(),
+             session: { track: s.track, type: s.type } };
+  replayTrack = replay.pos.map(p => [p[1], p[2]]);
+  sessionDriver = s.driver || "";
+  trace = []; curPos = null; dmgSig = "";
+  $("replaybar").style.display = "flex";
+  $("replayinfo").textContent = `${s.track} · ${s.type} · ${s.driver || "unknown"}`;
+  $("rplay").textContent = "Pause"; $("rrate").value = "1";
+  $("gridrows").innerHTML = ""; $("gridempty").style.display = "block"; $("gridempty").textContent = "The standings are not available during a replay.";
+  renderEvents(); updateStrip();
+  showTab("live");
+  replay.cursor = replay.t0;
+  requestAnimationFrame(replayTick);
+}
+function idxAt(arr, t) { let lo = 0, hi = arr.length - 1, r = 0; while (lo <= hi) { const mid = (lo + hi) >> 1; if (arr[mid][0] <= t) { r = mid; lo = mid + 1; } else hi = mid - 1; } return r; }
+function showReplayAt(t) {
+  const a = replay.tel[idxAt(replay.tel, t)];
+  const L = { speed: a[1], gear: a[2], rpm: a[3], throttle: a[4], brake: a[5], steer: a[6], drs: a[7], rev: a[8],
+              brakeTemps: a[9], tyreSurf: a[10], tyreInner: a[11], tyrePress: a[12], engineTemp: a[13],
+              session: replay.session, lap: {} };
+  if (replay.lap.length) {
+    const b = replay.lap[idxAt(replay.lap, t)];
+    L.lap = { pos: b[1], num: b[2], cur: b[3], last: b[4], s1: b[5], s2: b[6], sector: b[7], invalid: !!b[8], pen: b[9] };
+  }
+  if (replay.stat.length) {
+    const c = replay.stat[idxAt(replay.stat, t)];
+    Object.assign(L, { fuel: c[1], fuelLaps: c[2], ers: c[3], compound: c[4], tyreAge: c[5], brakeBias: c[6], pitLimiter: c[7], maxRpm: c[8] });
+  }
+  if (replay.dmg.length) {
+    const w = replay.dmg[idxAt(replay.dmg, t)];
+    L.tyreWear = [w[1], w[2], w[3], w[4]];
+    L.dmg = { tyre: [w[5], w[6], w[7], w[8]], brake: [w[9], w[10], w[11], w[12]], fwl: w[13], fwr: w[14], rw: w[15],
+              floor: w[16], diff: w[17], side: w[18], drsFault: !!w[19], ersFault: !!w[20], gearbox: w[21], engine: w[22],
+              mguh: w[23], es: w[24], ce: w[25], ice: w[26], mguk: w[27], tc: w[28], blown: !!w[29], seized: !!w[30] };
+  }
+  if (replay.pos.length) { const p = replay.pos[idxAt(replay.pos, t)]; L.pos = [p[1], p[2]]; }
+  renderLive(L, t);
+  $("rslider").value = Math.round((t - replay.t0) / Math.max(replay.t1 - replay.t0, 0.001) * 1000);
+  const el = t - replay.t0; $("rtime").textContent = `${Math.floor(el / 60)}:${String(Math.floor(el % 60)).padStart(2, "0")}`;
+}
+function replayTick(now) {
+  if (!replay) return;
+  if (replay.playing) {
+    replay.cursor += (now - replay.last) / 1000 * replay.rate;
+    if (replay.cursor >= replay.t1) { replay.cursor = replay.t1; replay.playing = false; $("rplay").textContent = "Replay"; }
+    showReplayAt(replay.cursor);
+  }
+  replay.last = now;
+  requestAnimationFrame(replayTick);
+}
+$("rplay").onclick = () => {
+  if (!replay) return;
+  if (replay.cursor >= replay.t1) { replay.cursor = replay.t0; trace = []; }
+  replay.playing = !replay.playing; replay.last = performance.now();
+  $("rplay").textContent = replay.playing ? "Pause" : "Resume";
+};
+$("rslider").oninput = e => { if (!replay) return; replay.cursor = replay.t0 + e.target.value / 1000 * (replay.t1 - replay.t0); trace = []; showReplayAt(replay.cursor); };
+$("rrate").onchange = e => { if (replay) replay.rate = +e.target.value; };
+$("rstop").onclick = () => { replay = null; replayTrack = null; trace = []; dmgSig = ""; $("replaybar").style.display = "none"; $("gridempty").textContent = "The standings appear as soon as the game sends the participants."; renderEvents(); updateStrip(); drawMap(true); };
+
+connect();
+showTab(location.hash.slice(1) || "live");
+</script>
+</body>
+</html>
