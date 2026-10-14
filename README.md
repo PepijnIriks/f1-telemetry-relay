@@ -1,14 +1,56 @@
 # F1 22 Telemetry Relay
 
-Receives the UDP telemetry from F1 22 and shows it on a website with three tabs:
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/Azure%20PostgreSQL-Flexible%20Server-4169E1?logo=postgresql&logoColor=white)
+![Azure Key Vault](https://img.shields.io/badge/Secrets-Azure%20Key%20Vault-0078D4?logo=microsoftazure&logoColor=white)
+![Windows](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white)
 
-| Tab | What |
+Live telemetry from the **F1 22** game on a web dashboard, with every packet stored in an
+**Azure PostgreSQL** database, so drivers can be compared lap by lap and corner by corner afterwards.
+
+Built for a Fontys school project: four drivers take turns on one simulator PC, and another group builds
+their own dashboard on the stored data.
+
+![Live dashboard](docs/live.png)
+
+## Features
+- **Live dashboard** - speed, gear, RPM, throttle/brake/steering, ERS, fuel, tyres, brakes, a 30 s chart,
+  a damage map of the car, track map, standings and race events, updated in real time
+- **Raw view** - every incoming packet with counters, to prove the data flows
+- **Races** - every stored run with lap and sector times, replay in the Live view, download as a zip
+- **Corner comparison** - drivers compared on every official F1 corner: corner time, entry/minimum/exit
+  speed, braking point, throttle point and overlaid speed lines
+- **One run per driver** - switch drivers on the website, in a small always-on-top window or in the console;
+  every driver gets their own run, even in the same game session
+- **Nothing gets lost** - data that is not in Azure yet waits on the PC and is sent later, also after a restart
+- **No passwords in the code** - the database login lives in Azure Key Vault
+- **Low cost** - the database turns itself on when someone races and off when nobody does; the PC's IP is
+  kept in the database firewall automatically
+
+## How it works
+```mermaid
+flowchart LR
+    G[F1 22 game] -- UDP 20777 --> R[relay.py]
+    R -- WebSocket, live --> W[Website<br/>Live / Raw / Races]
+    R -- batches, in the background --> DB[(Azure PostgreSQL)]
+    R -. Azure down? .-> S[spool folder<br/>on this PC] -. later .-> DB
+    KV[Azure Key Vault] -- database login --> R
+    D[F1 driver window] -- who drives --> R
+    DB --> O[Other group's dashboard<br/>read-only account]
+```
+The live view never waits for the database: packets go to the browser right away and to Azure in batches.
+
+## Quick start
+1. Install Python 3 and the Azure CLI, run `az login` (details below).
+2. Double-click **`start.bat`**. The first time it sets everything up, including the Key Vault login.
+3. In F1 22 set UDP telemetry to IP `127.0.0.1`, port `20777`, format `2022`.
+4. Drive. The dashboard opens at http://127.0.0.1:8000.
+
+No game at hand? `start.bat simulate` sends realistic fake data.
+
+| Corner analysis | Driver window |
 |---|---|
-| **Live** | Dashboard: car (speed, gear, RPM, throttle/brake/steering, ERS, fuel, tyre), 30 s chart, **damage map** (wings, floor, diffuser, sidepods, engine parts, tyres, brakes), tyres and brakes, lap, track map, standings and events |
-| **Raw** | The raw packets coming in, with counters and status lights (to prove everything works) |
-| **Races** | All stored runs from the database, with lap times. Click "Play in Live" for a replay. Tick runs and click **Compare corners** to compare drivers per official F1 corner. Old races from the `f22_` tables of the earlier collector are listed too (label "old"; no damage data) |
-
-Everything is written to PostgreSQL (Azure) in the background. The database can never slow down the live view.
+| ![Corner analysis](docs/corner-analysis.png) | ![Driver window](docs/driver-window.png) |
 
 ## Installing on a new PC (once)
 1. Copy this folder to the PC (or `git clone https://github.com/PepijnIriks/f1-telemetry-relay.git`).
