@@ -36,6 +36,8 @@ def connection_params():
     if not url:
         sys.exit(f"No database login: {err}")
     print(f"Login read from {where}")
+    import azure_firewall
+    azure_firewall.ensure(read_env(HERE / "config" / "config.env"))   # this computer's IP in the Azure firewall
     return {"dsn": url}
 
 

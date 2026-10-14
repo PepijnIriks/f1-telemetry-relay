@@ -44,6 +44,8 @@ The website opens automatically at http://localhost:8000 (tabs: `#live`, `#raw`,
 | `src/azure_power.py` | Turns the Azure database on and off and keeps the firewall up to date |
 | `src/intro.py` | The startup animation |
 | `src/secrets_store.py` | Reads the database login from Azure Key Vault |
+| `src/azure_firewall.py` | Keeps this computer's IP in the Azure firewall |
+| `install-firewall-task.bat` | Once per computer: checks the firewall every 15 minutes in the background |
 | `src/setup_keyvault.py` | Used by `setup-keyvault.bat` |
 | `src/drivers.py` | The list of driver names |
 | `src/driver_menu.py` | The small "F1 driver" window |
@@ -130,6 +132,17 @@ The relay manages the Azure database itself, so it doesn't use credit all day:
 - **Off** when you close the relay (close the window or Ctrl+C).
 - **Firewall:** the current public IP of this PC is put in the Azure firewall automatically (one rule called
   `relay-<computer name>`, updated when your IP changes). Turn it off with `AZURE_AUTO_FIREWALL=0`.
+
+### Always access from this computer (no manual firewall rules)
+Every computer that uses the database gets its own firewall rule `relay-<computer name>`, which is updated
+automatically when its public IP changes (other wifi, school, home). This happens:
+- when you start `start.bat`, `inspect-db.bat` or `export_csv.py`,
+- and every 15 minutes in the background after you double-click **`install-firewall-task.bat`** once on that
+  computer (a Windows scheduled task; remove it with `remove-firewall-task.bat`). Handy when you use pgAdmin or
+  DBeaver without the relay. What it did is written to `firewall.log`.
+
+Azure does not allow firewall changes while the database is stopped; the relay sets the rule right after it
+has started the database. Check it by hand (PowerShell, in this folder): `.venv\Scripts\python.exe src\azure_firewall.py`
 
 Needed once on the PC (PowerShell): `winget install -e --id Microsoft.AzureCLI`, then a new window and `az login`.
 Messages about this appear in the black window (lines starting with `[AZURE]`). Turn the on/off feature off with `AZURE_AUTO_POWER=0`.

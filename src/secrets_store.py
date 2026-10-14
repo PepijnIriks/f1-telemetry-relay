@@ -31,7 +31,7 @@ def az(args, timeout=60):
         return 127, "", "Azure CLI not found"
     try:
         p = subprocess.run([exe] + args + ["--only-show-errors"], capture_output=True, text=True,
-                           timeout=timeout)
+                           timeout=timeout, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         return p.returncode, p.stdout.strip(), p.stderr.strip()
     except subprocess.TimeoutExpired:
         return 1, "", "time-out"

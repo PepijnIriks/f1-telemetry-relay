@@ -13,3 +13,4 @@ config/old_races_cache.json
 .env
 secrets*.txt
 config/drivers.json
+firewall.log

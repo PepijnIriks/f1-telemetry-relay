@@ -23,6 +23,9 @@ if not url:
     sys.exit(f"No database login: {err}")
 print(f"Login read from {where}")
 
+import azure_firewall  # noqa: E402
+azure_firewall.ensure(cfg)        # make sure this computer's IP is allowed in the Azure firewall
+
 try:
     conn = psycopg2.connect(url, connect_timeout=10)
 except Exception as e:
