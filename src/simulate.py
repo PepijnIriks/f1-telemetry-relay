@@ -62,7 +62,7 @@ def speed_at(d, skill):
         v = min(v, vmin + rate * abs(dd))
     return max(60.0, v)
 TOTAL_LAPS = 5
-NAMES = ["Pepijn", "Verstappen", "Perez", "Leclerc", "Sainz", "Hamilton", "Russell", "Norris", "Ricciardo", "Alonso",
+NAMES = ["Player", "Verstappen", "Perez", "Leclerc", "Sainz", "Hamilton", "Russell", "Norris", "Ricciardo", "Alonso",
          "Ocon", "Gasly", "Tsunoda", "Vettel", "Stroll", "Bottas", "Zhou", "Albon", "Latifi", "Magnussen"]
 TEAMS = [2, 2, 2, 1, 1, 0, 0, 8, 8, 5, 5, 6, 6, 4, 4, 9, 9, 3, 3, 7]
 
@@ -118,10 +118,13 @@ def pkt_damage(uid, st, frame, progress):
     return pad(header(10, uid, st, frame) + car + bytes(DAMAGE.size) * 21, 948)
 
 
-def pkt_motion(uid, st, frame, phase):
+def pkt_motion(uid, st, frame, phase, speed=0.0, accel=0.0):
     x = 650 * math.cos(phase) + 140 * math.cos(3 * phase)
     z = 380 * math.sin(phase) + 110 * math.sin(2 * phase)
-    car = struct.pack("<3f", x, 0.0, z) + bytes(48)
+    # rough g-forces: cornering grows with speed in the slow parts, braking/accelerating from the speed change
+    g_lat = max(-4.5, min(4.5, math.sin(5 * phase) * (330 - speed) / 55))
+    g_long = max(-5.0, min(2.0, accel / 9.81))
+    car = struct.pack("<3f", x, 0.0, z) + bytes(24) + struct.pack("<3f", g_lat, g_long, 0.0) + bytes(12)
     return pad(header(0, uid, st, frame) + car, 1464)
 
 
@@ -211,7 +214,7 @@ try:
         send(pkt_lap(uid, st, frame, lap_num, cur, last_ms, s1_ms, s2_ms, sector,
                      (lap_num - 1) * TRACK_LEN + dist, dist))
         send(pkt_status(uid, st, frame, progress))
-        send(pkt_motion(uid, st, frame, phase))
+        send(pkt_motion(uid, st, frame, phase, speed, accel))
         for pid, size, hz in FILLERS:
             if now - last_sent[pid] >= 1.0 / hz:
                 last_sent[pid] = now

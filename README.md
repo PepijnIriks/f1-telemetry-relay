@@ -15,11 +15,18 @@ their own dashboard on the stored data.
 
 ## Features
 - **Live dashboard** - speed, gear, RPM, throttle/brake/steering, ERS, fuel, tyres, brakes, a 30 s chart,
-  a damage map of the car, track map, standings and race events, updated in real time
+  a damage map of the car, track map, G-force circle, standings and race events, updated in real time
+- **Live delta** - green/red time difference with the group's fastest lap on this track, while you drive
+- **Leaderboard** - per track the best lap of every driver, best sectors, theoretical best and a consistency score
+- **Personal bests and track records** - a pop-up and an event the moment someone beats their own or the group's best
 - **Raw view** - every incoming packet with counters, to prove the data flows
-- **Races** - every stored run with lap and sector times, replay in the Live view, download as a zip
+- **Races** - every stored run with lap and sector times, consistency, a tyre wear chart with pit advice,
+  replay in the Live view, download as a zip, a printable session report (PDF)
 - **Corner comparison** - drivers compared on every official F1 corner: corner time, entry/minimum/exit
-  speed, braking point, throttle point and overlaid speed lines
+  speed, braking point, throttle point and overlaid speed lines, plus a track map coloured by mini-sector winner
+  and a ghost of every driver's lap driving over it
+- **Status page** - `/status` shows whether the relay runs, data comes in and Azure is reachable; the same is
+  written to the table `f1_status` for the other group
 - **One run per driver** - switch drivers on the website, in a small always-on-top window or in the console;
   every driver gets their own run, even in the same game session
 - **Nothing gets lost** - data that is not in Azure yet waits on the PC and is sent later, also after a restart
@@ -47,6 +54,10 @@ The live view never waits for the database: packets go to the browser right away
 4. Drive. The dashboard opens at http://127.0.0.1:8000.
 
 No game at hand? `start.bat simulate` sends realistic fake data.
+
+| Leaderboard | Mini-sectors and ghost |
+|---|---|
+| ![Leaderboard](docs/leaderboard.png) | ![Mini-sectors and ghost](docs/ghost.png) |
 
 | Corner analysis | Driver window |
 |---|---|
@@ -87,6 +98,8 @@ The website opens automatically at http://127.0.0.1:8000 (tabs: `#live`, `#raw`,
 | `src/schema.py` | The database tables |
 | `src/spool.py` | Keeps data that is not in Azure yet on this PC (folder `spool`), so nothing is ever lost |
 | `src/create_readonly.py` | Used by `create-readonly-user.bat` |
+| `src/insights.py` | Leaderboard, consistency, tyres and pit advice, track outline, status row |
+| `web/status.html`, `web/report.html` | Status page and printable session report |
 | `create-readonly-user.bat` | Makes a read-only database account for the other group |
 | `src/azure_power.py` | Turns the Azure database on and off and keeps the firewall up to date |
 | `src/intro.py` | The startup animation |
@@ -225,6 +238,37 @@ Want to watch on a phone or tablet? Set `WEB_HOST=0.0.0.0` in `config/config.env
 - **Download**: everything of one run as a zip: laps, corners, speed lines and every raw packet (CSV), for a
   backup outside Azure or to analyse in Excel/Python. A README in the zip explains the files.
 - **Change driver**: forgot to switch? Give the run the right name afterwards. Only the name changes.
+
+## Leaderboard, delta and records
+- **Leaderboard tab**: pick a track; per driver the fastest valid lap, best S1/S2/S3 (purple = fastest of all),
+  theoretical best (best sectors added up) and consistency. Tick drivers and click **Compare selected** to open
+  the corner comparison of their fastest laps.
+- **Live delta** (Lap card): during a lap the time difference with the group's fastest lap on this track at the
+  same point of the lap. Green = faster. It needs one stored valid lap on that track.
+- **Records**: when a valid lap beats the driver's own best on that track, or the best of everyone, a pop-up
+  appears and an event is added (`[RECORD]` in the black window).
+
+## Analysis per run
+In the Races tab, click a run:
+- **Consistency**: 0-100, how close the valid laps are to each other (laps slower than 107% of the best,
+  like spins or out laps, are left out; 1% spread = 90).
+- **Tyres and strategy**: wear of each tyre per lap, tyre changes and temperatures, and a simple pit advice
+  (pit window when the worst tyre passes 60% wear or lap times drop more than 1.5% for two laps).
+- **Report (PDF)**: a clean printable page with winner, results, lap times and the corner-by-corner table;
+  click "Save as PDF". In the corner comparison the same button makes a report of all selected runs.
+
+## Mini-sectors and ghost
+In the corner comparison, the track map splits the lap into 25 equal mini-sectors and colours each one by the
+driver who was fastest there. **Play ghost** lets every driver's lap drive over the map at the same time
+(1x to 8x, or drag the slider). The track outline is worked out once per track from the raw data and kept in
+`config/trackmaps.json`.
+
+## Status page
+Open http://127.0.0.1:8000/status (or "Status" at the top): relay running, game data coming in, who drives,
+database connected, packets stored today and anything still waiting on this PC. Every minute the relay also
+writes this to the table `f1_status` (one row, `info` as JSON), so the other group can check from their side
+whether data is coming in: if `updated_at` is more than a few minutes old, the relay is not running or the
+database is off.
 
 ## Read-only account for the other group
 Double-click `create-readonly-user.bat` (with the database on). It makes the account `f1_reader` that can read

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session Report</title>
+<style>
+  :root { --text:#1b1b1f; --dim:#5d5d66; --faint:#8c8c96; --line:#dcdce2; --soft:#f4f4f7; --purple:#7c3f8a; --green:#1f7a4d;
+          --sans:"IBM Plex Sans","Segoe UI",system-ui,sans-serif; --mono:"IBM Plex Mono",Consolas,ui-monospace,monospace; }
+  * { box-sizing:border-box; }
+  html, body { background:#fff; }
+  body { margin:0; color:var(--text); font:13px/1.45 var(--sans); }
+  main { max-width:900px; margin:0 auto; padding:28px 24px 40px; }
+  .bar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
+  .bar button { font:inherit; padding:7px 14px; border:1px solid var(--line); background:var(--soft); border-radius:3px; cursor:pointer; }
+  h1 { font-size:22px; margin:0; } .sub { color:var(--dim); margin:2px 0 0; }
+  h2 { font-size:14px; margin:26px 0 8px; padding-bottom:4px; border-bottom:2px solid var(--text); }
+  .winner { display:flex; gap:24px; align-items:center; padding:14px 18px; background:var(--soft); border-left:4px solid var(--purple); margin-top:16px; }
+  .winner .big { font:600 26px var(--mono); color:var(--purple); }
+  .winner .name { font-size:18px; font-weight:600; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:5px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { font-size:11px; color:var(--dim); font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
+  td.m { font-family:var(--mono); } .best { color:var(--purple); font-weight:600; } .inv { color:var(--faint); text-decoration:line-through; }
+  .gap { color:var(--faint); font-size:11px; margin-left:4px; }
+  .sw { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:6px; }
+  .cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(270px, 1fr)); gap:18px; }
+  .cols td, .cols th { padding:4px 5px; font-size:12px; }
+  .note { color:var(--faint); font-size:11px; margin-top:8px; }
+  .empty { color:var(--dim); padding:20px 0; }
+  @media print { .bar button { display:none; } main { padding:0; } h2 { break-after:avoid; } table { break-inside:auto; } tr { break-inside:avoid; } }
+  @page { margin:14mm; }
+</style>
+</head>
+<body>
+<main>
+  <div class="bar"><div><h1 id="title">Session report</h1><p class="sub" id="sub">Loading...</p></div>
+    <button onclick="window.print()">Save as PDF / print</button></div>
+  <div id="out"></div>
+</main>
+<script>
+const COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtMs = ms => { if (!ms || ms <= 0) return "-:--.---"; const m = Math.floor(ms / 60000), s = ms % 60000; return `${m}:${(s / 1000).toFixed(3).padStart(6, "0")}`; };
+const sec = ms => (!ms || ms <= 0) ? "-" : (ms / 1000).toFixed(3);
+function consistency(times) {
+  const laps = times.filter(t => t > 0); if (!laps.length) return null;
+  const best = Math.min(...laps), use = laps.filter(t => t <= best * 1.07); if (use.length < 3) return null;
+  const mean = use.reduce((a, b) => a + b, 0) / use.length;
+  const sd = Math.sqrt(use.reduce((a, b) => a + (b - mean) ** 2, 0) / use.length);
+  return Math.round(Math.max(0, Math.min(100, 100 - 10 * (sd / best * 100))));
+}
+(async function () {
+  const q = new URLSearchParams(location.search), ids = (q.get("ids") || "").split(",").filter(Boolean), mode = q.get("mode") || "best";
+  const out = document.getElementById("out");
+  if (!ids.length) { out.innerHTML = '<div class="empty">No runs chosen.</div>'; return; }
+  let sessions, cmp;
+  try {
+    [sessions, cmp] = await Promise.all([fetch("/api/sessions").then(r => r.json()),
+      fetch(`/api/compare?mode=${mode}&ids=${ids.map(encodeURIComponent).join(",")}`).then(r => r.json())]);
+  } catch (e) { out.innerHTML = '<div class="empty">The relay is not reachable.</div>'; return; }
+  if (sessions.error) { out.innerHTML = `<div class="empty">${esc(sessions.error)}</div>`; return; }
+  const runs = ids.map((id, i) => {
+    const [src, uid] = id.split(":");
+    const s = (sessions.sessions || []).find(x => x.uid === uid && (x.src || "f1") === src) || { uid, src };
+    return { id, uid, src, s, color: COLORS[i % COLORS.length], c: (cmp.runs || []).find(r => r.id === id) };
+  });
+  for (const r of runs) {
+    try { r.laps = (await (await fetch(`/api/sessions/${encodeURIComponent(r.uid)}/laps${r.src === "f22" ? "?src=f22" : ""}`)).json()).laps || []; }
+    catch (e) { r.laps = []; }
+    const valid = r.laps.filter(l => !l.invalid && l.time > 0);
+    r.best = valid.length ? Math.min(...valid.map(l => l.time)) : null;
+    r.cons = consistency(valid.map(l => l.time));
+    r.valid = valid.length;
+  }
+  const s0 = runs[0].s, start = Math.min(...runs.map(r => r.s.start || Infinity));
+  document.getElementById("title").textContent = `Session report · ${s0.track || ""}`;
+  document.getElementById("sub").textContent = `${s0.type || ""} · ${isFinite(start) ? new Date(start * 1000).toLocaleString("en-GB", { dateStyle: "full", timeStyle: "short" }) : ""} · ${runs.length} run(s)`;
+  document.title = `Session report ${s0.track || ""} ${isFinite(start) ? new Date(start * 1000).toLocaleDateString("en-GB") : ""}`;
+
+  const ranked = runs.filter(r => r.best).sort((a, b) => a.best - b.best);
+  let html = "";
+  if (ranked.length) {
+    const w = ranked[0];
+    html += `<div class="winner"><div><div style="color:var(--dim)">Fastest lap</div><div class="name">${esc(w.s.driver || "?")}</div></div>
+      <div class="big">${fmtMs(w.best)}</div>${ranked[1] ? `<div style="color:var(--dim)">${sec(ranked[1].best - w.best)} s faster than ${esc(ranked[1].s.driver || "?")}</div>` : ""}</div>`;
+  }
+  html += `<h2>Result</h2><table><thead><tr><th>P</th><th>Driver</th><th>Best lap</th><th>Valid laps</th><th>Consistency</th><th>Corners total</th><th>Date</th></tr></thead><tbody>` +
+    [...ranked, ...runs.filter(r => !r.best)].map((r, i) => `<tr><td>${r.best ? i + 1 : "-"}</td><td><span class="sw" style="background:${r.color}"></span>${esc(r.s.driver || "?")}</td>
+      <td class="m ${i === 0 && r.best ? "best" : ""}">${fmtMs(r.best)}${i && r.best ? `<span class="gap">+${sec(r.best - ranked[0].best)}</span>` : ""}</td>
+      <td>${r.valid}</td><td>${r.cons ?? "-"}</td><td class="m">${r.c && !r.c.empty ? sec(r.c.corner_total) : "-"}</td>
+      <td>${r.s.start ? new Date(r.s.start * 1000).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" }) : ""}</td></tr>`).join("") + "</tbody></table>";
+
+  html += `<h2>Lap times</h2><div class="cols">` + runs.map(r => `<div><b><span class="sw" style="background:${r.color}"></span>${esc(r.s.driver || "?")}</b>
+    <table><thead><tr><th>Lap</th><th>Time</th><th>S1</th><th>S2</th><th>S3</th></tr></thead><tbody>` +
+    (r.laps.length ? r.laps.map(l => `<tr><td>${l.lap}</td><td class="m ${l.time === r.best ? "best" : ""} ${l.invalid ? "inv" : ""}">${fmtMs(l.time)}</td><td class="m">${sec(l.s1)}</td><td class="m">${sec(l.s2)}</td><td class="m">${sec(l.s3)}</td></tr>`).join("")
+      : '<tr><td colspan="5">no laps</td></tr>') + "</tbody></table></div>").join("") + "</div>";
+
+  const withCorners = runs.filter(r => r.c && !r.c.empty);
+  if ((cmp.corners || []).length && withCorners.length) {
+    const wins = withCorners.map(() => 0);
+    const rows = cmp.corners.map(c => {
+      const t = withCorners.map(r => r.c.corners[c.corner] ? r.c.corners[c.corner].time : null);
+      const best = Math.min(...t.filter(x => x));
+      const wi = t.indexOf(best); if (wi >= 0) wins[wi]++;
+      return `<tr><td>${esc(c.corner)}</td>${t.map(x => `<td class="m ${x === best ? "best" : ""}">${sec(x)}${x && x !== best ? `<span class="gap">+${sec(x - best)}</span>` : ""}</td>`).join("")}<td>${wi >= 0 ? esc(withCorners[wi].s.driver || "?") : "-"}</td></tr>`;
+    }).join("");
+    html += `<h2>Corner by corner <span style="font-weight:400;color:var(--dim)">(${mode === "ideal" ? "best per corner over all laps" : "fastest lap of each driver"})</span></h2>
+      <table><thead><tr><th>Corner</th>${withCorners.map(r => `<th><span class="sw" style="background:${r.color}"></span>${esc(r.s.driver || "?")}</th>`).join("")}<th>Fastest</th></tr></thead><tbody>${rows}
+      <tr><td><b>Corners won</b></td>${wins.map(w => `<td><b>${w}</b></td>`).join("")}<td></td></tr></tbody></table>
+      <p class="note">Corner time = from about 150 m before to 100 m after the official F1 corner. Purple = fastest.</p>`;
+  }
+  html += `<p class="note">Made with the F1 22 telemetry relay · ${new Date().toLocaleString("en-GB")}</p>`;
+  out.innerHTML = html;
+})();
+</script>
+</body>
+</html>

@@ -41,6 +41,42 @@
   .who { display:flex; gap:6px; align-items:center; color:var(--dim); font-size:13px; }
   .who b { color:var(--text); font-weight:500; }
   .chips { display:flex; flex-wrap:wrap; gap:4px; }
+  nav a.navlink { color:var(--dim); text-decoration:none; padding:0 14px; display:inline-flex; align-items:center; font-size:14px; }
+  nav a.navlink:hover { color:var(--text); }
+  .toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; }
+  .trackchips { display:flex; flex-wrap:wrap; gap:4px; }
+  .trackchips button.on { background:var(--accent2); border-color:var(--accent); color:#fff; }
+  .recordline { margin-bottom:10px; color:var(--dim); }
+  .recordline b { color:var(--text); font-size:18px; } .recordline .mono { color:#c58bd3; font-size:18px; }
+  table.board td, table.board th { white-space:nowrap; }
+  table.board .purple { color:#c58bd3; font-weight:600; }
+  table.board .gap { color:var(--faint); font-size:12px; margin-left:6px; }
+  .cbar { display:inline-block; width:60px; height:6px; background:var(--line2); border-radius:3px; vertical-align:middle; margin-right:6px; overflow:hidden; }
+  .cbar i { display:block; height:100%; background:var(--green); }
+  .cmpmap { margin:6px 0 18px; padding:12px 14px; background:var(--panel2); border-radius:4px; }
+  .cmpmap .ca-head { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .cmpmap .ca-head h3 { margin:0 8px 0 0; } .cmpmap #ghostpos { flex:1; min-width:120px; }
+  .cmpmapbody { display:grid; grid-template-columns:minmax(0,2fr) minmax(220px,1fr); gap:14px; margin-top:10px; }
+  @media (max-width:900px) { .cmpmapbody { grid-template-columns:1fr; } }
+  .mapwrap.tall { height:380px; }
+  .mslist .row { display:flex; justify-content:space-between; gap:8px; padding:4px 0; border-bottom:1px solid #ffffff0a; font-size:13px; }
+  .mslist .row b { font-family:var(--mono); font-weight:500; }
+  .tyrebox { margin-top:16px; padding-top:12px; border-top:1px solid var(--line); }
+  .tyrebox h4 { margin:0 0 8px; font-size:13px; color:var(--dim); font-weight:600; }
+  .tyrechart svg { width:100%; height:auto; display:block; }
+  .tyrechart .axis text { font:10px var(--mono); fill:var(--faint); } .tyrechart .axis line { stroke:#ffffff12; }
+  .delta { display:flex; align-items:baseline; gap:10px; margin-top:6px; padding:8px 10px; background:var(--panel2); border-radius:3px; }
+  .delta b { font:600 26px/1 var(--mono); font-variant-numeric:tabular-nums; color:var(--dim); }
+  .delta.ahead b { color:var(--green); } .delta.behind b { color:var(--red); }
+  .delta small { color:var(--faint); font-size:12px; }
+  .gwrap { position:relative; width:100%; max-width:260px; aspect-ratio:1; margin:0 auto; }
+  .gwrap canvas { position:absolute; inset:0; width:100%; height:100%; }
+  .toast { position:fixed; right:20px; bottom:20px; max-width:420px; padding:14px 18px; border-radius:4px; background:var(--panel2);
+           border:1px solid var(--line2); border-left:4px solid var(--green); box-shadow:0 8px 30px #0008; font-weight:500;
+           transform:translateY(140%); transition:transform .35s ease; z-index:50; }
+  .toast.show { transform:none; }
+  .toast.record { border-left-color:var(--accent); }
+  .toast small { display:block; color:var(--dim); font-weight:400; font-size:12px; margin-bottom:3px; }
   a.btnlink { display:inline-block; font:inherit; color:var(--text); background:var(--panel2); border:1px solid var(--line2); border-radius:3px; padding:5px 11px; text-decoration:none; }
   a.btnlink:hover { border-color:var(--dim); }
   .rename { display:inline-flex; gap:6px; margin-left:6px; }
@@ -59,7 +95,7 @@
   .tab { display:none; padding:14px 20px 48px; } .tab.on { display:block; }
   .grid { display:grid; grid-template-columns:repeat(12, minmax(0,1fr)); gap:12px; }
   .s3 { grid-column:span 3; } .s4 { grid-column:span 4; } .s5 { grid-column:span 5; } .s6 { grid-column:span 6; } .s7 { grid-column:span 7; } .s8 { grid-column:span 8; }
-  @media (max-width:1500px) { .s3 { grid-column:span 6; } }
+  @media (max-width:1500px) { .s3 { grid-column:span 6; } .s5 { grid-column:span 8; } }
   @media (max-width:1180px) { .s3,.s4,.s5,.s6,.s7,.s8 { grid-column:span 12; } }
   .card { display:flex; flex-direction:column; padding:14px 16px 16px; background:var(--panel); border:1px solid var(--line); border-radius:4px; }
   .card h3 { margin:0 0 12px; font-size:13px; font-weight:600; color:var(--dim); }
@@ -225,6 +261,8 @@
     <button data-tab="live" class="on">Live</button>
     <button data-tab="raw">Raw</button>
     <button data-tab="races">Races</button>
+    <button data-tab="board">Leaderboard</button>
+    <a class="navlink" href="/status" target="_blank" rel="noopener" title="Status page: relay, game data, database">Status &#8599;</a>
   </nav>
   <span class="spacer"></span>
   <span class="st"><i id="wsdot"></i><span id="wstxt">connecting...</span></span>
@@ -337,6 +375,7 @@
     <div class="card s3">
       <h3>Lap</h3>
       <div class="pos"><span class="p" id="pos">-</span><small id="lapn">lap -</small></div>
+      <div class="delta" id="delta" title="Time difference with the fastest lap of the group on this track, at the same point of the lap"><b id="deltav">±0.000</b><small id="deltaref">no reference lap yet</small></div>
       <div class="rows" style="margin-top:6px">
         <div class="cur"><span>Current lap time</span><b id="cur">-:--.---</b></div>
         <div><span>Last lap</span><b id="last">-:--.---</b></div>
@@ -345,6 +384,15 @@
         <div><span>Penalty</span><b id="pen">-</b></div>
       </div>
       <div class="laplist"><div class="rows" id="laplist"></div></div>
+    </div>
+
+    <div class="card s3">
+      <h3>G-force <small>last 2 seconds</small></h3>
+      <div class="gwrap"><canvas id="gcirc"></canvas></div>
+      <div class="rows" style="margin-top:8px">
+        <div><span>Lateral (cornering)</span><b id="glat">-</b></div>
+        <div><span>Braking / accelerating</span><b id="glong">-</b></div>
+      </div>
     </div>
 
     <div class="card s4">
@@ -363,7 +411,7 @@
       </div>
     </div>
 
-    <div class="card s3">
+    <div class="card" style="grid-column:1 / -1">
       <h3>Events</h3>
       <div class="events" id="events"><div class="empty">No events yet.</div></div>
     </div>
@@ -434,10 +482,24 @@
           <option value="brake">Braking point</option>
           <option value="gas">Full throttle point</option>
         </select></label>
+      <button id="cmpreport" title="Printable overview of this comparison: save it as PDF">Report (PDF)</button>
       <button id="cmpclose">Close</button>
     </div>
     <div id="cmpnotes"></div>
     <div class="runkeys" id="cmpkeys"></div>
+    <div class="cmpmap" id="cmpmapbox">
+      <div class="ca-head">
+        <h3>Track · mini-sectors and ghost</h3>
+        <button id="ghostplay" disabled>&#9654; Play ghost</button>
+        <select id="ghostrate" title="Playback speed"><option value="1">1x</option><option value="2">2x</option><option value="4" selected>4x</option><option value="8">8x</option></select>
+        <input type="range" id="ghostpos" min="0" max="1000" value="0" disabled aria-label="Ghost position">
+        <span class="mono" id="ghosttime">0:00.000</span>
+      </div>
+      <div class="cmpmapbody">
+        <div class="mapwrap tall"><canvas id="cmpmap"></canvas></div>
+        <div class="mslist" id="mslist"></div>
+      </div>
+    </div>
     <div class="ca" id="ca">
       <div class="ca-head">
         <h3>Corner analysis · <span id="caname">-</span></h3>
@@ -462,6 +524,26 @@
   </div>
 </section>
 
+<!-- ================= LEADERBOARD ================= -->
+<section class="tab" id="tab-board">
+  <div class="toolbar">
+    <button id="boardreload">Refresh</button>
+    <div class="trackchips" id="boardtracks"></div>
+    <span class="spacer"></span>
+    <button id="boardcmp" disabled title="Tick drivers and compare their fastest laps corner by corner">Compare selected</button>
+  </div>
+  <div class="card">
+    <div class="recordline" id="boardrecord"></div>
+    <div class="scroll"><table class="board" id="boardtable"></table></div>
+    <div class="empty" id="boardempty">Loading...</div>
+    <p class="hint">Only valid laps count. <b>Theoretical</b> = the driver's best S1 + best S2 + best S3 (from different laps).
+      <b>Consistency</b> = how constant someone drives over all their valid laps (100 = every lap the same; laps slower than
+      107% of their best, like spins or out laps, are left out). Purple = fastest of everyone.</p>
+  </div>
+</section>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -473,11 +555,12 @@ const num = (v, d = "-") => (v === undefined || v === null) ? d : v;
 
 /* ---------------- tabs ---------------- */
 function showTab(name) {
-  if (!["live","raw","races"].includes(name)) name = "live";
+  if (!["live","raw","races","board"].includes(name)) name = "live";
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.id === "tab-" + name));
   if (location.hash !== "#" + name) history.replaceState(null, "", "#" + name);
   if (name === "races") loadSessions();
+  if (name === "board") loadBoard();
   if (name === "live") { drawTrace(); drawMap(true); }
 }
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
@@ -651,6 +734,22 @@ function renderLive(L, t) {
   $("sector").textContent = lap.sector != null ? lap.sector + 1 : "-";
   $("pen").textContent = lap.pen ? `+${lap.pen} s` : "–";
   $("cur").className = lap.invalid ? "invalid" : "";
+  const dl = L.delta;
+  if (dl && !replay) {
+    const sec = dl.ms / 1000;
+    $("deltav").textContent = (sec < 0 ? "−" : "+") + Math.abs(sec).toFixed(3);
+    $("deltaref").textContent = `vs ${dl.ref} ${fmtMs(dl.refMs)}`;
+    $("delta").className = "delta " + (dl.ms < 0 ? "ahead" : "behind");
+  } else {
+    $("deltav").textContent = "±0.000"; $("delta").className = "delta";
+    $("deltaref").textContent = replay ? "not in a replay" : "delta appears once the group has a valid lap on this track";
+  }
+  if (L.g) { gTrail.push([t, L.g[0], L.g[1]]); while (gTrail.length && t - gTrail[0][0] > 2) gTrail.shift();
+    $("glat").textContent = Math.abs(L.g[0]).toFixed(1) + " g"; $("glong").textContent = (L.g[1] >= 0 ? "+" : "−") + Math.abs(L.g[1]).toFixed(1) + " g"; }
+  if (L.toast && L.toast.t !== lastToast && !replay) {
+    lastToast = L.toast.t;
+    if (serverNow() - L.toast.t < 20) showToast(L.toast.text, L.toast.kind);
+  }
   if (lap.laps) {
     $("laplist").innerHTML = lap.laps.map(l => `<div><span>Lap ${l[0]}</span><b class="${l[1] === lap.best ? "best" : ""} ${l[2] ? "invalid" : ""}">${fmtMs(l[1])}</b></div>`).join("");
   }
@@ -668,6 +767,35 @@ function renderLive(L, t) {
   trace.push([t, L.speed ?? 0, thr, brk]);
   while (trace.length && t - trace[0][0] > 30) trace.shift();
   scheduleDraw();
+}
+
+let gTrail = [], lastToast = null, toastTimer = null;
+function showToast(text, kind) {
+  const el = $("toast");
+  el.className = "toast " + (kind || "");
+  el.innerHTML = `<small>${kind === "record" ? "Track record" : "Personal best"}</small>${esc(text)}`;
+  requestAnimationFrame(() => el.classList.add("show"));
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 9000);
+}
+function drawG() {
+  const c = $("gcirc"); if (!c || !c.offsetParent) return;
+  const [W, H, d] = fit(c), ctx = c.getContext("2d"), cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 14 * d, MAX = 5;
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = "#ffffff22"; ctx.lineWidth = d; ctx.fillStyle = "#6a6a74"; ctx.font = `${11 * d}px IBM Plex Mono, monospace`;
+  for (let g = 1; g <= MAX; g++) { ctx.beginPath(); ctx.arc(cx, cy, R * g / MAX, 0, Math.PI * 2); ctx.stroke(); if (g % 2 === 1) ctx.fillText(g + "g", cx + 3 * d, cy - R * g / MAX + 12 * d); }
+  ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
+  ctx.fillText("brake", cx + 4 * d, cy + R - 4 * d); ctx.fillText("accel", cx + 4 * d, cy - R + 24 * d);
+  if (!gTrail.length) return;
+  const now = gTrail[gTrail.length - 1][0];
+  // lateral to the side, braking (negative longitudinal) downwards
+  const px = p => [cx + Math.max(-1, Math.min(1, p[1] / MAX)) * R, cy - Math.max(-1, Math.min(1, p[2] / MAX)) * R];
+  for (let i = 1; i < gTrail.length; i++) {
+    const a = px(gTrail[i - 1]), b = px(gTrail[i]), age = (now - gTrail[i][0]) / 2;
+    ctx.strokeStyle = `rgba(163,95,179,${0.85 - age * 0.75})`; ctx.lineWidth = 2 * d;
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+  }
+  const p = px(gTrail[gTrail.length - 1]);
+  ctx.fillStyle = "#e7e7ea"; ctx.beginPath(); ctx.arc(p[0], p[1], 6 * d, 0, Math.PI * 2); ctx.fill();
 }
 
 function renderGrid(rows) {
@@ -698,7 +826,7 @@ function updateStrip() {
 setInterval(updateStrip, 1000);
 
 let drawQueued = false;
-function scheduleDraw() { if (!drawQueued) { drawQueued = true; requestAnimationFrame(() => { drawQueued = false; drawTrace(); drawMap(); }); } }
+function scheduleDraw() { if (!drawQueued) { drawQueued = true; requestAnimationFrame(() => { drawQueued = false; drawTrace(); drawMap(); drawG(); }); } }
 function fit(c) {
   const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
   const w = Math.max(1, Math.round(r.width * d)), h = Math.max(1, Math.round(r.height * d));
@@ -890,11 +1018,16 @@ async function selectSession(uid) {
   const own = s.src !== "f22";
   $("detail").innerHTML = `<p style="margin-top:0"><button id="playbtn">&#9654; Play in Live</button>
     ${own ? `<a class="btnlink" id="dlbtn" href="/api/sessions/${encodeURIComponent(uid)}/download" title="Everything of this run as a zip: laps, corners, every raw packet">&#8681; Download</a>
-    <button id="renamebtn" title="Wrong name? Change the driver of this run (no data is removed)">Change driver</button>` : ""}
+    <button id="renamebtn" title="Wrong name? Change the driver of this run (no data is removed)">Change driver</button>
+    <button id="reportbtn" title="Printable overview of this run: save it as PDF">Report (PDF)</button>` : ""}
     <span style="color:var(--dim)"> ${s.packets.toLocaleString("en-GB")} ${s.src === "f22" ? "player samples" : "packets"} stored${s.src === "f22" ? " · old race, no damage data" : ""}</span></p>
-    ${laps.length ? `<table><thead><tr><th>Lap</th><th>Time</th><th>S1</th><th>S2</th><th>S3</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">No lap times recorded in this session.</div>'}`;
+    ${consistencyLine(valid.map(l => l.time))}
+    ${laps.length ? `<table><thead><tr><th>Lap</th><th>Time</th><th>S1</th><th>S2</th><th>S3</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">No lap times recorded in this session.</div>'}
+    ${own ? '<div class="tyrebox" id="tyrebox"><h4>Tyres and strategy</h4><div class="empty">loading...</div></div>' : ""}`;
   $("playbtn").onclick = () => startReplay(s);
   if (own) {
+    $("reportbtn").onclick = () => window.open(`/report?ids=${encodeURIComponent("f1:" + uid)}`, "_blank");
+    loadTyres(uid);
     $("dlbtn").onclick = () => { $("dlbtn").textContent = "Preparing download..."; setTimeout(() => { $("dlbtn").innerHTML = "&#8681; Download"; }, 8000); };
     $("renamebtn").onclick = () => {
       const p = $("renamebtn").parentElement;
@@ -915,6 +1048,97 @@ async function selectSession(uid) {
   }
 }
 $("reload").onclick = loadSessions;
+
+/* ---------------- CONSISTENCY / TYRES ---------------- */
+function consistency(times) {
+  // same rule as the relay: laps within 107% of the best, 1% spread = 90 points
+  const laps = times.filter(t => t > 0); if (!laps.length) return null;
+  const best = Math.min(...laps), use = laps.filter(t => t <= best * 1.07);
+  if (use.length < 3) return null;
+  const mean = use.reduce((a, b) => a + b, 0) / use.length;
+  const sd = Math.sqrt(use.reduce((a, b) => a + (b - mean) ** 2, 0) / use.length);
+  return { score: Math.round(Math.max(0, Math.min(100, 100 - 10 * (sd / best * 100)))), sd, n: use.length };
+}
+function consistencyLine(times) {
+  const c = consistency(times);
+  if (!c) return '<p class="hint" style="margin:4px 0 10px">Consistency: needs at least 3 valid laps.</p>';
+  return `<p style="margin:4px 0 10px">Consistency <span class="cbar"><i style="width:${c.score}%"></i></span><b>${c.score}</b>
+    <span style="color:var(--faint)"> / 100 · laps within ±${(c.sd / 1000).toFixed(3)} s (${c.n} laps)</span></p>`;
+}
+const TYRE_NAMES = ["Rear left", "Rear right", "Front left", "Front right"], TYRE_COL = ["#3987e5", "#d95926", "#199e70", "#c98500"];
+async function loadTyres(uid) {
+  let r;
+  try { r = await (await fetch(`/api/sessions/${encodeURIComponent(uid)}/tyres`)).json(); } catch (e) { return; }
+  const box = $("tyrebox"); if (!box || selected !== uid) return;
+  if (r.error || !r.data) { box.innerHTML = `<h4>Tyres and strategy</h4><div class="empty">${esc(r.error || "no data")}</div>`; return; }
+  const laps = r.data.laps.filter(l => l.wear);
+  if (!laps.length) { box.innerHTML = `<h4>Tyres and strategy</h4><div class="empty">${esc(r.data.advice)}</div>`; return; }
+  const W = 520, H = 190, ml = 34, mr = 10, mt = 10, mb = 24, pw = W - ml - mr, ph = H - mt - mb;
+  const n = laps.length, X = i => ml + (n === 1 ? pw / 2 : i / (n - 1) * pw), Y = v => mt + ph * (1 - v / 100);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Tyre wear per lap"><g class="grid axis">`;
+  for (const v of [0, 25, 50, 75, 100]) svg += `<line x1="${ml}" x2="${W - mr}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${ml - 6}" y="${Y(v) + 4}" text-anchor="end">${v}%</text>`;
+  laps.forEach((l, i) => { if (n <= 20 || i % Math.ceil(n / 20) === 0) svg += `<text x="${X(i)}" y="${H - 6}" text-anchor="middle">${l.lap}</text>`; });
+  svg += `<line x1="${ml}" x2="${W - mr}" y1="${Y(60)}" y2="${Y(60)}" stroke-dasharray="4 4" style="stroke:#d9534f88"/></g>`;
+  for (const k of [2, 3, 0, 1]) svg += `<polyline fill="none" stroke="${TYRE_COL[k]}" stroke-width="2" points="${laps.map((l, i) => `${X(i)},${Y(l.wear[k])}`).join(" ")}"/>`;
+  svg += "</svg>";
+  const changes = laps.filter((l, i) => i && (l.compound !== laps[i - 1].compound || l.age < laps[i - 1].age)).map(l => `lap ${l.lap}: ${l.compound}`);
+  box.innerHTML = `<h4>Tyres and strategy</h4>
+    <div class="legend">${[2, 3, 0, 1].map(k => `<span><b style="background:${TYRE_COL[k]}"></b>${TYRE_NAMES[k]}</span>`).join("")}<span style="color:var(--faint)">dashed = 60% wear</span></div>
+    <div class="tyrechart">${svg}</div>
+    <p style="margin:6px 0 4px"><b>${esc(r.data.advice)}</b></p>
+    <p class="hint" style="margin:0">Start: ${esc(laps[0].compound || "?")} · end of run: ${esc(laps[n - 1].compound || "?")}, ${laps[n - 1].age ?? "?"} laps old, worst tyre ${Math.max(...laps[n - 1].wear).toFixed(0)}% worn
+      ${changes.length ? " · tyre changes: " + esc(changes.join(", ")) : ""} · tyre temperature at the end ${laps[n - 1].temp ? laps[n - 1].temp.map(t => t + "°").join(" / ") : "-"}</p>`;
+}
+
+/* ---------------- LEADERBOARD ---------------- */
+let boardData = [], boardTrack = null;
+const boardSel = new Set();
+async function loadBoard() {
+  $("boardempty").style.display = "block"; $("boardempty").textContent = "Loading...";
+  let r;
+  try { r = await (await fetch("/api/leaderboard")).json(); }
+  catch (e) { $("boardempty").textContent = "relay not reachable"; return; }
+  if (r.error) { $("boardempty").textContent = r.error; $("boardtable").innerHTML = ""; return; }
+  boardData = r.data || [];
+  if (!boardData.length) { $("boardempty").textContent = "No valid laps stored yet."; $("boardtable").innerHTML = ""; $("boardtracks").innerHTML = ""; return; }
+  if (!boardData.some(t => t.track_id === boardTrack)) boardTrack = boardData[0].track_id;
+  $("boardtracks").innerHTML = boardData.map(t => `<button data-t="${t.track_id}" class="${t.track_id === boardTrack ? "on" : ""}">${esc(t.track)}</button>`).join("");
+  $("boardtracks").querySelectorAll("button").forEach(b => b.onclick = () => { boardTrack = +b.dataset.t; boardSel.clear(); loadBoardRender(); });
+  loadBoardRender();
+}
+function loadBoardRender() {
+  $("boardtracks").querySelectorAll("button").forEach(b => b.classList.toggle("on", +b.dataset.t === boardTrack));
+  const t = boardData.find(x => x.track_id === boardTrack); if (!t) return;
+  $("boardempty").style.display = "none";
+  const rows = t.drivers, lead = rows[0];
+  const bestS = [0, 1, 2].map(i => Math.min(...rows.map(r => r.best_sectors[i] || Infinity)));
+  const bestC = Math.max(...rows.map(r => r.consistency ?? -1));
+  $("boardrecord").innerHTML = `Track record ${esc(t.track)}: <b>${esc(lead.driver)}</b> <span class="mono">${fmtMs(lead.best)}</span>
+    <span style="margin-left:8px">${esc(new Date(lead.at * 1000).toLocaleDateString("en-GB"))} · ${esc(lead.session)}</span>`;
+  $("boardtable").innerHTML = `<thead><tr><th></th><th>P</th><th>Driver</th><th>Best lap</th><th>S1</th><th>S2</th><th>S3</th>
+    <th title="Best S1 + best S2 + best S3">Theoretical</th><th>Valid laps</th><th>Consistency</th><th>Set on</th></tr></thead><tbody>` +
+    rows.map((r, i) => `<tr><td class="ck"><input type="checkbox" data-run="${esc(r.run)}" ${boardSel.has(r.run) ? "checked" : ""}></td>
+      <td>${i + 1}</td><td><b>${esc(r.driver)}</b></td>
+      <td class="mono ${i === 0 ? "purple" : ""}">${fmtMs(r.best)}${i ? `<span class="gap">+${((r.best - lead.best) / 1000).toFixed(3)}</span>` : ""}</td>
+      ${[0, 1, 2].map(k => `<td class="mono ${r.best_sectors[k] && r.best_sectors[k] === bestS[k] ? "purple" : ""}" title="best ${fmtSec(r.best_sectors[k])} · in best lap ${fmtSec(r.sectors[k])}">${fmtSec(r.best_sectors[k])}</td>`).join("")}
+      <td class="mono">${fmtMs(r.theoretical)}</td><td>${r.laps}</td>
+      <td>${r.consistency == null ? '<span style="color:var(--faint)">needs 3 laps</span>' : `<span class="cbar"><i style="width:${r.consistency}%;${r.consistency === bestC ? "background:#c58bd3" : ""}"></i></span>${r.consistency} <span class="gap">±${fmtSec(r.spread)} s</span>`}</td>
+      <td>${esc(new Date(r.at * 1000).toLocaleString("en-GB", {dateStyle:"short", timeStyle:"short"}))}</td></tr>`).join("") + "</tbody>";
+  $("boardtable").querySelectorAll("input").forEach(cb => cb.onchange = () => { cb.checked ? boardSel.add(cb.dataset.run) : boardSel.delete(cb.dataset.run); $("boardcmp").disabled = boardSel.size < 1; });
+  $("boardcmp").disabled = boardSel.size < 1;
+}
+$("boardreload").onclick = loadBoard;
+$("boardcmp").onclick = async () => {
+  const runs = [...boardSel];
+  history.replaceState(null, "", "#races");
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === "races"));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.id === "tab-races"));
+  await loadSessions();
+  cmpSel.clear(); runs.forEach(r => cmpSel.add("f1:" + r));
+  $("cmpmode").value = "best";
+  await loadSessions();
+  loadCompare();
+};
 
 /* ---------------- CORNER COMPARISON ---------------- */
 const SERIES = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
@@ -980,7 +1204,121 @@ async function loadCompare() {
   $("cachips").querySelectorAll("button").forEach(b => b.onclick = () => showCorner(b.dataset.c));
   $("ca").style.display = names.length ? "block" : "none";
   if (names.length) showCorner(names.includes(caCorner) ? caCorner : names[0]);
+  loadCmpMap();
 }
+
+/* ---- track map with mini-sectors and a ghost of every driver's lap ---- */
+const MS_COUNT = 25;
+let cmpMap = null, ghost = { t: 0, playing: false, last: 0 };
+async function lapForRun(r) {
+  if (r.lap) return r.lap;
+  const [src, uid] = r.id.split(":");
+  if (src !== "f1") return null;
+  try {
+    const d = await (await fetch(`/api/sessions/${encodeURIComponent(uid)}/laps`)).json();
+    const v = (d.laps || []).filter(l => !l.invalid && l.time > 0).sort((a, b) => a.time - b.time);
+    return v.length ? v[0].lap : null;
+  } catch (e) { return null; }
+}
+async function loadCmpMap() {
+  cmpMap = null; ghost.playing = false; $("ghostplay").innerHTML = "&#9654; Play ghost";
+  $("ghostplay").disabled = $("ghostpos").disabled = true; $("mslist").innerHTML = "";
+  const s0 = cmpData.runs[0].s || {};
+  const runs = cmpData.runs.filter(r => !r.empty);
+  const box = $("cmpmapbox");
+  if (s0.track_id == null || !runs.length) { box.style.display = "none"; return; }
+  box.style.display = "block";
+  drawCmpMapMessage("Loading the track...");
+  let map;
+  try { map = await (await fetch(`/api/trackmap?track=${s0.track_id}`)).json(); } catch (e) { map = {}; }
+  if (!map.data) { drawCmpMapMessage(map.error || "No track outline yet (needs one stored lap with raw data on this track)."); return; }
+  const lines = [];
+  for (const r of runs) {
+    const lap = await lapForRun(r);
+    if (!lap) continue;
+    const tr = await getTrace(r.id, lap);
+    if (tr && tr.time && tr.time.length > 20) lines.push({ r, lap, step: tr.step, time: tr.time });
+  }
+  if (!lines.length) { drawCmpMapMessage("No lap traces for these runs."); return; }
+  const L = Math.min(...lines.map(l => (l.time.length - 1) * l.step));
+  const tAt = (l, d) => { const f = d / l.step, i = Math.min(Math.floor(f), l.time.length - 2); return l.time[i] + (l.time[i + 1] - l.time[i]) * (f - i); };
+  const ms = [];
+  for (let k = 0; k < MS_COUNT; k++) {
+    const d0 = L * k / MS_COUNT, d1 = L * (k + 1) / MS_COUNT;
+    const times = lines.map(l => tAt(l, d1) - tAt(l, d0));
+    const best = Math.min(...times);
+    ms.push({ d0, d1, times, win: times.indexOf(best) });
+  }
+  cmpMap = { pts: map.data, lines, ms, L, end: Math.max(...lines.map(l => l.time[l.time.length - 1])) };
+  const wins = lines.map((l, i) => ms.filter(m => m.win === i).length);
+  $("mslist").innerHTML = `<div class="hint" style="margin:0 0 6px">The lap split in ${MS_COUNT} equal mini-sectors, coloured by who was fastest there.</div>` +
+    lines.map((l, i) => `<div class="row"><span><span class="swatch" style="--c:${l.r.color}"></span>${esc(l.r.s.driver || "?")} <small style="color:var(--faint)">lap ${l.lap}</small></span><b>${wins[i]} / ${MS_COUNT}</b></div>`).join("");
+  $("ghostplay").disabled = $("ghostpos").disabled = false;
+  ghost.t = 0; $("ghostpos").value = 0;
+  drawCmpMap();
+}
+function drawCmpMapMessage(text) {
+  const c = $("cmpmap"), [W, H, d] = fit(c), g = c.getContext("2d");
+  g.clearRect(0, 0, W, H); g.fillStyle = "#6a6a74"; g.font = `${12 * d}px IBM Plex Sans, sans-serif`;
+  g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, W / 2, H / 2);
+}
+function mapPos(pts, d) {
+  let lo = 0, hi = pts.length - 1;
+  while (lo < hi - 1) { const m = (lo + hi) >> 1; if (pts[m][0] <= d) lo = m; else hi = m; }
+  const a = pts[lo], b = pts[hi], f = Math.max(0, Math.min(1, (d - a[0]) / ((b[0] - a[0]) || 1)));
+  return [a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+}
+function drawCmpMap() {
+  if (!cmpMap) return;
+  const c = $("cmpmap"); if (!c.offsetParent) return;
+  const [W, H, d] = fit(c), g = c.getContext("2d"), pts = cmpMap.pts;
+  g.clearRect(0, 0, W, H);
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+  for (const p of pts) { x0 = Math.min(x0, p[1]); x1 = Math.max(x1, p[1]); z0 = Math.min(z0, p[2]); z1 = Math.max(z1, p[2]); }
+  const pad = 22 * d, sc = Math.min((W - 2 * pad) / ((x1 - x0) || 1), (H - 2 * pad) / ((z1 - z0) || 1));
+  const ox = (W - (x1 - x0) * sc) / 2, oz = (H - (z1 - z0) * sc) / 2;
+  const P = (x, z) => [ox + (x - x0) * sc, oz + (z - z0) * sc];
+  g.lineJoin = g.lineCap = "round";
+  g.beginPath(); pts.forEach((p, i) => { const q = P(p[1], p[2]); i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); });
+  g.strokeStyle = "#3b3b44"; g.lineWidth = 12 * d; g.stroke();
+  for (const m of cmpMap.ms) {
+    g.beginPath();
+    const a = mapPos(pts, m.d0); let q = P(a[0], a[1]); g.moveTo(q[0], q[1]);
+    for (const p of pts) if (p[0] > m.d0 && p[0] < m.d1) { q = P(p[1], p[2]); g.lineTo(q[0], q[1]); }
+    const b = mapPos(pts, m.d1); q = P(b[0], b[1]); g.lineTo(q[0], q[1]);
+    g.strokeStyle = cmpMap.lines[m.win].r.color; g.lineWidth = 6 * d; g.stroke();
+  }
+  // start / finish
+  const sf = P(pts[0][1], pts[0][2]); g.fillStyle = "#fff"; g.fillRect(sf[0] - 3 * d, sf[1] - 3 * d, 6 * d, 6 * d);
+  // ghosts
+  cmpMap.lines.forEach((l, i) => {
+    let lo = 0, hi = l.time.length - 1;
+    if (ghost.t >= l.time[hi]) lo = hi; else while (lo < hi - 1) { const m = (lo + hi) >> 1; if (l.time[m] <= ghost.t) lo = m; else hi = m; }
+    const dist = lo * l.step, p = mapPos(pts, dist), q = P(p[0], p[1]);
+    g.fillStyle = l.r.color; g.strokeStyle = "#121214"; g.lineWidth = 2 * d;
+    g.beginPath(); g.arc(q[0], q[1], 7 * d, 0, 7); g.fill(); g.stroke();
+    g.fillStyle = "#e7e7ea"; g.font = `${11 * d}px IBM Plex Sans, sans-serif`; g.textAlign = "left"; g.textBaseline = "middle";
+    g.fillText(trunc(l.r.s.driver || "?", 10), q[0] + 11 * d, q[1] + (i - (cmpMap.lines.length - 1) / 2) * 14 * d);
+  });
+  $("ghosttime").textContent = fmtMs(Math.max(1, ghost.t));
+}
+function ghostTick(now) {
+  if (!ghost.playing || !cmpMap) return;
+  ghost.t += (now - ghost.last) * +$("ghostrate").value; ghost.last = now;
+  if (ghost.t >= cmpMap.end) { ghost.t = cmpMap.end; ghost.playing = false; $("ghostplay").innerHTML = "&#9654; Play ghost"; }
+  $("ghostpos").value = Math.round(ghost.t / cmpMap.end * 1000);
+  drawCmpMap();
+  if (ghost.playing) requestAnimationFrame(ghostTick);
+}
+$("ghostplay").onclick = () => {
+  if (!cmpMap) return;
+  ghost.playing = !ghost.playing;
+  $("ghostplay").innerHTML = ghost.playing ? "&#10074;&#10074; Pause" : "&#9654; Play ghost";
+  if (ghost.playing) { if (ghost.t >= cmpMap.end) ghost.t = 0; ghost.last = performance.now(); requestAnimationFrame(ghostTick); }
+};
+$("ghostpos").oninput = () => { if (!cmpMap) return; ghost.t = $("ghostpos").value / 1000 * cmpMap.end; drawCmpMap(); };
+window.addEventListener("resize", () => drawCmpMap());
+$("cmpreport").onclick = () => { if (cmpSel.size) window.open(`/report?mode=${$("cmpmode").value}&ids=${[...cmpSel].map(encodeURIComponent).join(",")}`, "_blank"); };
 
 function cornerBest(c, metric) {
   const vals = cmpData.runs.map(r => r.corners[c] && r.corners[c][metric]).filter(v => v !== null && v !== undefined);

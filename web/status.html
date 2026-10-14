@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F1 Relay Status</title>
+<style>
+  :root { --bg:#121214; --panel:#18181b; --line:#2c2c33; --text:#e7e7ea; --dim:#9a9aa4; --faint:#6a6a74;
+          --green:#4caf7d; --red:#d9534f; --amber:#d9a441; --accent:#a35fb3;
+          --sans:"IBM Plex Sans","Segoe UI",system-ui,sans-serif; --mono:"IBM Plex Mono",Consolas,ui-monospace,monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 var(--sans); }
+  main { max-width:980px; margin:0 auto; padding:24px 16px 40px; }
+  h1 { font-size:20px; margin:0 0 4px; } .sub { color:var(--dim); margin:0 0 20px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:14px 16px; }
+  .card h2 { margin:0 0 8px; font-size:12px; font-weight:600; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; }
+  .v { font:500 24px/1.2 var(--mono); }
+  .s { color:var(--dim); font-size:13px; margin-top:4px; word-break:break-word; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; background:var(--faint); vertical-align:1px; }
+  .ok .dot { background:var(--green); } .bad .dot { background:var(--red); } .warn .dot { background:var(--amber); }
+  a { color:#c58bd3; }
+  .note { margin-top:20px; color:var(--faint); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>F1 relay status</h1>
+  <p class="sub">Updates every 2 seconds · <a href="/">open the dashboard</a></p>
+  <div class="grid" id="grid"><div class="card"><div class="s">Loading...</div></div></div>
+  <p class="note">The same information is written every minute to the table <code>f1_status</code> in the database,
+    so the other group can see from their side whether the relay is running and data is coming in
+    (look at <code>updated_at</code>: older than a few minutes = the relay is not running or the database is off).</p>
+</main>
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const n = v => v == null ? "-" : Number(v).toLocaleString("en-GB");
+const dur = s => { s = Math.round(s || 0); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? `${h}h ${m}m` : `${m}m ${s % 60}s`; };
+function card(title, cls, value, sub) {
+  return `<div class="card ${cls}"><h2>${esc(title)}</h2><div class="v"><span class="dot"></span>${value}</div><div class="s">${sub}</div></div>`;
+}
+async function tick() {
+  let s;
+  try { s = await (await fetch("/api/status", { cache: "no-store" })).json(); }
+  catch (e) {
+    document.getElementById("grid").innerHTML = card("Relay", "bad", "not running", "Start start.bat on the simulator PC.");
+    return;
+  }
+  document.getElementById("grid").innerHTML = [
+    card("Relay", "ok", "running", `up for ${dur(s.uptime_s)}`),
+    card("Game data", s.game_data ? "ok" : "warn", s.game_data ? "coming in" : "waiting",
+         s.last_packet_age_s == null ? "no packets yet" : `last packet ${dur(s.last_packet_age_s)} ago`),
+    card("Driving now", s.driver ? "ok" : "warn", esc(s.driver || "nobody"), esc([s.track, s.session].filter(Boolean).join(" · ") || "no session")),
+    card("Database", s.db_connected ? "ok" : (s.db_error ? "bad" : "warn"), s.db_connected ? "connected" : "not connected",
+         esc(s.db_error || s.azure || "") || (s.db_size_gb != null ? `${s.db_size_gb} GB in use` : "")),
+    card("Stored today", "", n(s.packets_today), `${n(s.runs_today)} runs today (packets)`),
+    card("This relay session", "", n(s.packets_this_relay_session), `${n(s.written_to_db)} written to Azure`),
+    card("Waiting on this PC", s.waiting_on_pc ? "warn" : "ok", n(s.waiting_on_pc),
+         s.waiting_on_pc ? "saved safely, sent to Azure when it is reachable" : "nothing waiting, everything is in Azure"),
+  ].join("");
+}
+tick(); setInterval(tick, 2000);
+</script>
+</body>
+</html>

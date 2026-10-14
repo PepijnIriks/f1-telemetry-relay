@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 
 from aiohttp import web
 
+import insights
 import intro
 import secrets_store
 import spool
@@ -67,6 +68,10 @@ cornerbuf = {}              # per run: samples of the lap being driven, for the 
 names, numbers, teams = {}, {}, {}      # per car index (from Participants)
 grid_state, grid_dirty, last_grid = [], [False], [0.0]
 events, events_dirty = [], [False]
+# Personal bests / track records (from the database) and the reference lap for the live delta
+records = {"loaded": False, "pb": {}, "track": {}}
+refs = {}                      # track_id -> fastest lap of the group with its lap trace (or None)
+ref_wanted = {"track": None, "reload": 0.0}
 
 
 def car_name(i):
@@ -186,8 +191,11 @@ def parse_damage(data, p):
 
 
 def parse_motion(data, p):
-    x, _y, z = struct.unpack_from("<3f", data, 24 + p * MOTION_SIZE)
+    base = 24 + p * MOTION_SIZE
+    x, _y, z = struct.unpack_from("<3f", data, base)
+    g_lat, g_long = struct.unpack_from("<2f", data, base + 36)
     live["pos"] = [round(x, 1), round(z, 1)]
+    live["g"] = [round(g_lat, 2), round(g_long, 2)]
     live_dirty[0] = True
 
 
@@ -253,6 +261,8 @@ def parse_lap(data, p, uid, now, meta):
             trace = lap_trace(samples, meta.get("tlen"))
             if trace:
                 db_queue.put(("trace", trace_row(uid, done, meta["track"], meta.get("tlen"), trace)))
+            if not st["invalid"]:
+                check_records(meta, last_ms, now)
             st["laps"].insert(0, [done, last_ms, st["invalid"]])
             del st["laps"][8:]
             valid = [l[1] for l in st["laps"] if not l[2]]
@@ -265,6 +275,15 @@ def parse_lap(data, p, uid, now, meta):
         st["invalid"] = False
     st["last_ms"] = last_ms
 
+    # live delta to the group's fastest lap on this track (same distance into the lap)
+    ref_wanted["track"] = meta["track"] if meta["track"] >= 0 else None
+    ref = refs.get(meta["track"])
+    if ref and pit == 0 and v[4] > 0 and not invalid:
+        i = int(v[4] / ref["step"])
+        live["delta"] = {"ms": cur_ms - ref["time"][i], "ref": ref["driver"], "refMs": ref["ms"]} \
+            if i < len(ref["time"]) else None
+    else:
+        live["delta"] = None
     live["lap"] = {"pos": pos, "num": lapnum, "cur": cur_ms, "last": last_ms, "s1": s1, "s2": s2, "dist": round(v[4]),
                    "sector": sector, "invalid": bool(invalid), "pit": pit, "pen": penalties,
                    "best": st.get("best", 0), "laps": st["laps"]}
@@ -273,6 +292,36 @@ def parse_lap(data, p, uid, now, meta):
     if now - last_grid[0] >= 0.5:
         last_grid[0] = now
         build_grid(data, p)
+
+
+def check_records(meta, ms, now):
+    """A valid lap was completed: new personal best? new track record (fastest of the whole group)?"""
+    driver, track = (meta.get("driver") or "").strip(), meta.get("track", -1)
+    if not driver or track < 0 or not records["loaded"]:
+        return
+    name = TRACKS.get(track, "this track")
+    old_pb = records["pb"].get((track, driver.lower()))
+    old_tr = records["track"].get(track)
+    text = None
+    if old_tr is None or ms < old_tr[0]:
+        records["track"][track] = (ms, driver)
+        text = (f"TRACK RECORD {name}: {driver} {fmt_ms(ms)}"
+                + (f" (-{(old_tr[0] - ms) / 1000:.3f} s, was {old_tr[1]})" if old_tr else ""))
+        kind = "record"
+    if old_pb is None or ms < old_pb:
+        records["pb"][(track, driver.lower())] = ms
+        if not text:
+            text = f"New personal best for {driver} on {name}: {fmt_ms(ms)}" + \
+                   (f" (-{(old_pb - ms) / 1000:.3f} s)" if old_pb else "")
+            kind = "pb"
+    if text:
+        events.insert(0, {"t": now, "text": text})
+        del events[40:]
+        events_dirty[0] = True
+        live["toast"] = {"t": now, "text": text, "kind": kind}
+        print(f"[RECORD] {text}", flush=True)
+        if kind == "record":
+            ref_wanted["reload"] = now + 6      # the new fastest lap becomes the reference for the delta
 
 
 def parse_session(data, meta):
@@ -358,6 +407,7 @@ class UdpProtocol(asyncio.DatagramProtocol):
         pid = h["packet_id"]
         uid = str(h["session_uid"])
         state["total"] += 1
+        state["last_pkt"] = now
         state["bytes"] += len(data)
         state["by_type"][pid] = state["by_type"].get(pid, 0) + 1
 
@@ -568,7 +618,7 @@ def db_worker():
     state["db"]["enabled"] = True
     conn = None
     flush = float(CFG["DB_FLUSH_SECONDS"])
-    last_flush = last_try = last_storage = 0.0
+    last_flush = last_try = last_storage = last_status = 0.0
     no_db_since = None
     last_report = None
     waiting = spool.count()
@@ -617,6 +667,12 @@ def db_worker():
                     ensure_schema(conn)
                     report(True)
                     last_storage = 0.0         # check the storage right after (re)connecting
+                    try:
+                        with conn, conn.cursor() as cur:
+                            records["pb"], records["track"] = insights.driver_bests(cur)
+                        records["loaded"] = True
+                    except Exception as e:
+                        print(f"[DB] Loading personal bests failed: {friendly_db_error(e)}", flush=True)
                 except Exception as e:
                     close()
                     report(False, friendly_db_error(e))
@@ -638,6 +694,35 @@ def db_worker():
                 storage_check(conn)
             except Exception as e:
                 print(f"[DB] Storage check failed: {friendly_db_error(e)}", flush=True)
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+
+        # Reference lap for the live delta (fastest lap of the group on the track being driven)
+        tw = ref_wanted["track"]
+        if conn and tw is not None and (tw not in refs or (ref_wanted["reload"] and now >= ref_wanted["reload"])):
+            ref_wanted["reload"] = 0.0
+            try:
+                with conn, conn.cursor() as cur:
+                    refs[tw] = insights.reference_lap(cur, tw)
+                if refs[tw]:
+                    print(f"[DELTA] Reference for {TRACKS.get(tw, tw)}: {refs[tw]['driver']} "
+                          f"{fmt_ms(refs[tw]['ms'])}", flush=True)
+            except Exception as e:
+                refs[tw] = None
+                print(f"[DB] Loading the reference lap failed: {friendly_db_error(e)}", flush=True)
+
+        # Status row for the other group (f1_status), every minute
+        if conn and now - last_status >= 60:
+            last_status = now
+            try:
+                with conn, conn.cursor() as cur:
+                    pk, nruns = insights.packets_today(cur)
+                    status_cache.update({"packets_today": pk, "runs_today": nruns})
+                    insights.write_status(cur, status_info())
+            except Exception as e:
+                print(f"[DB] Writing the status failed: {friendly_db_error(e)}", flush=True)
                 try:
                     conn.rollback()
                 except Exception:
@@ -945,6 +1030,72 @@ async def api_laps(request):
         return web.json_response({"enabled": True, "error": friendly_db_error(e)})
     return web.json_response({"enabled": True, "laps": [
         {"lap": r[0], "time": r[1], "s1": r[2], "s2": r[3], "s3": r[4], "invalid": r[5]} for r in rows]})
+
+
+# ----------------------------------------------------------------- Status, leaderboard, track map, tyres
+status_cache = {"packets_today": None, "runs_today": None}
+
+
+def status_info():
+    now = time.time()
+    s = live.get("session") or {}
+    return {
+        "relay_running": True, "updated": insights.now_iso(),
+        "game_data": now - state.get("last_pkt", 0) < 5, "last_packet_age_s": round(now - state["last_pkt"])
+        if state.get("last_pkt") else None,
+        "driver": state["driver"], "track": s.get("track"), "session": s.get("type"),
+        "packets_this_relay_session": state["total"], "written_to_db": state["db"].get("written", 0),
+        "waiting_on_pc": state["db"].get("spooled", 0), "packets_today": status_cache["packets_today"],
+        "runs_today": status_cache["runs_today"], "db_size_gb": state["db"].get("size_gb"),
+        "db_connected": state["db"].get("connected", False), "db_error": state["db"].get("error", ""),
+        "azure": state.get("azure", {}).get("msg", ""), "uptime_s": round(now - state["started"]),
+    }
+
+
+async def api_status(request):
+    return web.json_response(status_info())
+
+
+async def page(request):
+    name = {"/status": "status.html", "/report": "report.html"}[request.path]
+    return web.FileResponse(ROOT / "web" / name)
+
+
+def db_call(fn, *args):
+    conn = db_connect()
+    try:
+        ensure_schema(conn)
+        with conn, conn.cursor() as cur:
+            return fn(cur, *args)
+    finally:
+        conn.close()
+
+
+async def db_json(fn, *args):
+    bad = db_unavailable()
+    if bad:
+        return bad
+    try:
+        res = await asyncio.get_running_loop().run_in_executor(None, db_call, fn, *args)
+    except Exception as e:
+        return web.json_response({"enabled": True, "error": friendly_db_error(e)})
+    return web.json_response({"enabled": True, "data": res})
+
+
+async def api_leaderboard(request):
+    return await db_json(insights.leaderboard)
+
+
+async def api_trackmap(request):
+    try:
+        track = int(request.query.get("track", "-1"))
+    except ValueError:
+        return web.json_response({"error": "bad track"})
+    return await db_json(insights.track_map, track)
+
+
+async def api_tyres(request):
+    return await db_json(insights.tyre_history, request.match_info["uid"])
 
 
 # ----------------------------------------------------------------- Run: change driver / download
@@ -1464,6 +1615,11 @@ async def main():
         web.get("/api/compare", api_compare),
         web.get("/api/trace", api_trace),
         web.post("/api/sessions/{uid}/driver", api_run_driver),
+        web.get("/api/sessions/{uid}/tyres", api_tyres),
+        web.get("/api/leaderboard", api_leaderboard),
+        web.get("/api/trackmap", api_trackmap),
+        web.get("/api/status", api_status),
+        web.get("/status", page), web.get("/report", page),
         web.get("/api/sessions/{uid}/download", api_run_download),
     ])
     runner = web.AppRunner(app)
