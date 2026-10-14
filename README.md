@@ -165,12 +165,10 @@ columns itself on start (nothing to do by hand).
 The Azure server is a Burstable B1ms with 64 GB storage and **storage autogrow off**, so the storage bill is
 fixed and can't grow by itself. The things that matter:
 - **Database off when nobody races** (see "Database on/off"): compute is billed per hour only while it is on.
-- **Less data:** the fast packets (motion, lap data, telemetry, status) are stored at most `RAW_STORE_HZ`
-  times per second (default 10, the game sends up to 60). Live view and live corner analysis still get every packet.
-- **Never full:** a full database becomes read-only. When the raw packets pass `RAW_MAX_GB` (default 40 GB),
-  the relay removes the **oldest raw packets** automatically. Lap times, sectors, corner analysis and speed lines
-  are always kept, so old runs stay visible in Races and in the corner comparison (only their replay gets lost).
-  `RAW_MAX_GB=0` turns this off.
+- **Nothing is ever thrown away:** every packet is stored, so all data can be found later.
+- **Warning before it is full:** a full database becomes read-only. When the database passes `DB_WARN_GB`
+  (default 50 of the 64 GB), the black window and the website show a warning, so you can make the storage
+  bigger in the Azure portal in time (f1db > Compute + storage; storage can only grow, never shrink).
 - The size is printed every 10 minutes in the black window (`[DB] Storage: ...`) and shown on the Raw tab.
 
 ## Old races

@@ -787,6 +787,7 @@ function onStats(s) {
   $("dbtxt").textContent = !db.enabled ? "database not linked" : db.error ? "database error" : db.connected ? "database OK" : "database connecting...";
   if (db.error) $("dbmsg").innerHTML = `<div class="dbmsg err">Database error: ${esc(db.error)}. The relay keeps retrying; no data is lost.</div>`;
   else if (!db.enabled) $("dbmsg").innerHTML = `<div class="dbmsg">${esc(db.hint || "Database not linked")}. Live and Raw still work, but nothing is stored and the Races tab stays empty.</div>`;
+  else if (db.warning) $("dbmsg").innerHTML = `<div class="dbmsg err">${esc(db.warning)}</div>`;
   else $("dbmsg").innerHTML = "";
   const names = Object.keys(s.by_type);
   $("types").innerHTML = names.map(n => `<span class="pill">${esc(n)} <b class="mono">${s.by_type[n].toLocaleString("en-GB")}</b></span>`).join("");
