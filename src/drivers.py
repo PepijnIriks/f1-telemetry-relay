@@ -57,6 +57,9 @@ class DriverList:
         text = " ".join(str(text).split())[:60]
         if text.isdigit() and 1 <= int(text) <= len(self.names):
             return self.names[int(text) - 1]
+        for n in self.names:                     # "pepijn" -> "Pepijn": use the spelling from the list
+            if n.lower() == text.lower():
+                return n
         if text:
             self.add(text)
         return text

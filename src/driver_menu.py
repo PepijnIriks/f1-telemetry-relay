@@ -1,13 +1,15 @@
 """
 Small "F1 driver" window on the PC to change the driver with one click.
 
-start.bat opens it next to the relay. It talks to the relay (http://localhost:8000), so it shows
+start.bat opens it next to the relay. It talks to the relay (http://127.0.0.1:8000), so it shows
 the same names as the website. Click a name = that person drives now (new run). Type a new name
 and press Enter (or "Add") to add someone. Right-click a name to remove it from the list.
 "Always on top" keeps the window above the game (works with the game in windowed / borderless mode).
 """
 import json
+import queue
 import sys
+import threading
 import tkinter as tk
 import urllib.request
 from pathlib import Path
@@ -25,7 +27,9 @@ def http_port():
     return port
 
 
-API = f"http://localhost:{http_port()}/api/driver"
+# 127.0.0.1 and not "localhost": on Windows "localhost" first tries IPv6, which the relay does not
+# listen on, and that costs about 2 seconds per request (that made the window laggy).
+API = f"http://127.0.0.1:{http_port()}/api/driver"
 BG, PANEL, LINE, TEXT, DIM, ACCENT = "#121214", "#1f1f24", "#3b3b44", "#e7e7ea", "#9a9aa4", "#a35fb3"
 
 
@@ -63,7 +67,10 @@ class Menu:
                        selectcolor=PANEL, activebackground=BG, activeforeground=TEXT,
                        font=("Segoe UI", 9)).pack(anchor="w", padx=8, pady=(0, 8))
         self.shown = None
-        self.refresh()
+        self.todo, self.done, self.tick = queue.Queue(), queue.Queue(), 0
+        threading.Thread(target=self.worker, daemon=True).start()
+        self.todo.put(None)
+        self.poll()
 
     def set_top(self):
         self.root.attributes("-topmost", self.top.get())
@@ -87,34 +94,50 @@ class Menu:
             if i < 9:
                 self.root.bind(str(i + 1), lambda e, n=n: self.choose(n) if e.widget is not self.entry else None)
 
-    def send(self, body):
+    # ---- network: never in the window's own thread, so clicking and dragging never stutters
+    def worker(self):
+        while True:
+            body = self.todo.get()
+            try:
+                r = call(body)
+            except Exception:
+                r = None
+            self.done.put(r)
+
+    def poll(self):
+        """Every 50 ms: show answers from the relay; every second: ask for the current state."""
         try:
-            r = call(body)
-            self.draw(r.get("driver", ""), r.get("names", []))
-        except Exception:
-            self.now.config(text="relay not running (start start.bat)", fg=DIM)
+            while True:
+                r = self.done.get_nowait()
+                if r is None:
+                    self.shown = None
+                    self.now.config(text="relay not running (start start.bat)", fg=DIM)
+                elif self.todo.empty():                  # an older answer must not undo a newer click
+                    self.draw(r.get("driver", ""), r.get("names", []))
+        except queue.Empty:
+            pass
+        self.tick += 1
+        if self.tick % 20 == 0 and self.todo.empty():
+            self.todo.put(None)
+        self.root.after(50, self.poll)
 
     def choose(self, name):
-        self.send({"driver": name})
+        names = list(self.shown[1]) if self.shown else []
+        if name.lower() not in (n.lower() for n in names):
+            names.append(name)
+        self.draw(name, names)                           # show it right away, the relay follows
+        self.todo.put({"driver": name})
 
     def add(self):
         name = self.entry.get().strip()
         if name:
             self.entry.delete(0, "end")
-            self.send({"driver": name})
+            self.choose(name)
 
     def remove(self, name):
-        self.send({"remove": name})
-
-    def refresh(self):
-        try:
-            r = call()
-            self.draw(r.get("driver", ""), r.get("names", []))
-        except Exception:
-            self.shown = None
-            self.now.config(text="relay not running (start start.bat)", fg=DIM)
-        self.root.after(1000, self.refresh)
-
+        if self.shown:
+            self.draw(self.shown[0], [n for n in self.shown[1] if n.lower() != name.lower()])
+        self.todo.put({"remove": name})
 
 if __name__ == "__main__":
     if "--check" in sys.argv:
