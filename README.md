@@ -27,20 +27,25 @@ Everything is written to PostgreSQL (Azure) in the background. The database can 
 - Fake data without the game (demo): `start.bat simulate`
 - What is already in the database: double-click `inspect-db.bat`
 - Set up / change the database login in Key Vault: double-click `setup-keyvault.bat`
-- Linux/macOS: `./start.sh` (or `./start.sh simulate`)
 
 On start you get a short start-lights animation (turn it off with `SHOW_INTRO=0` in `config/config.env`).
-The website opens automatically at http://localhost:8000 (tabs: `#live`, `#raw`, `#races`).
+The website opens automatically at http://127.0.0.1:8000 (tabs: `#live`, `#raw`, `#races`).
 
 ## Folders
 | Folder / file | What |
 |---|---|
-| `start.bat`, `start.sh` | Start everything in one go |
+| `start.bat` | Start everything in one go |
 | `inspect-db.bat` | Shows all tables and row counts in the Azure database |
 | `setup-keyvault.bat` | Once: puts the database login in Azure Key Vault |
 | `export_csv.py` | Exports all database tables to CSV (`python export_csv.py`) |
 | `config/config.env` | Settings: ports, name of the key vault, Azure on/off, driver names and buttons. **No passwords** |
-| `src/relay.py` | The relay: UDP in, parsing, website, database |
+| `src/relay.py` | The relay: UDP in, parsing, website, database writer |
+| `src/f1_format.py` | F1 22 packet formats and names (tracks, session types...) |
+| `src/corners.py` | Official F1 corners: corner times, speeds, braking points, lap traces |
+| `src/schema.py` | The database tables |
+| `src/spool.py` | Keeps data that is not in Azure yet on this PC (folder `spool`), so nothing is ever lost |
+| `src/create_readonly.py` | Used by `create-readonly-user.bat` |
+| `create-readonly-user.bat` | Makes a read-only database account for the other group |
 | `src/azure_power.py` | Turns the Azure database on and off and keeps the firewall up to date |
 | `src/intro.py` | The startup animation |
 | `src/secrets_store.py` | Reads the database login from Azure Key Vault |
@@ -160,6 +165,30 @@ so they never clash with other tables in the same database:
 
 Runs stored before the driver-switch feature keep `run_id` = their `session_uid`; the relay adds the new
 columns itself on start (nothing to do by hand).
+
+## Nothing gets lost
+Everything that is not in Azure yet (database off or still starting, no internet, relay closed) is written
+to the folder `spool` on this PC. As soon as the database can be reached again, the relay sends those files to
+Azure (oldest first, new data waits until they are in) and only removes a file after Azure confirmed it.
+This also works after a restart, a closed window or a PC shutdown. In the black window you see
+`[DB] Sent ... saved packets from this PC to Azure`. Don't delete the `spool` folder while it has files.
+
+## Website only on this PC
+By default the website and the telemetry port only accept connections from this PC (`WEB_HOST=127.0.0.1`,
+`UDP_HOST=127.0.0.1`), so nobody else on the (school) wifi can see the data or change the driver.
+Want to watch on a phone or tablet? Set `WEB_HOST=0.0.0.0` in `config/config.env` and open
+`http://<IP of this PC>:8000` there (anyone on that network can then use it).
+
+## In the Races tab
+- **Download**: everything of one run as a zip: laps, corners, speed lines and every raw packet (CSV), for a
+  backup outside Azure or to analyse in Excel/Python. A README in the zip explains the files.
+- **Change driver**: forgot to switch? Give the run the right name afterwards. Only the name changes.
+
+## Read-only account for the other group
+Double-click `create-readonly-user.bat` (with the database on). It makes the account `f1_reader` that can read
+every table, also tables made later, but can never change or delete anything, and stores its login in Key Vault
+(secret `f1-readonly-url`). The window shows how to get it to the other group. Running it again gives a new
+password (the old one stops working). They also need their own IP in the database firewall.
 
 ## Keeping costs down
 The Azure server is a Burstable B1ms with 64 GB storage and **storage autogrow off**, so the storage bill is

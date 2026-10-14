@@ -36,6 +36,7 @@ with conn, conn.cursor() as cur:
     print("Connected:", cur.fetchone()[0][:60])
     cur.execute("""SELECT table_schema, table_name FROM information_schema.tables
                    WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+                     AND table_schema NOT LIKE '\\_timescaledb%' AND table_schema NOT LIKE 'timescaledb\\_%'
                    ORDER BY table_schema, table_name""")
     tables = cur.fetchall()
     if not tables:

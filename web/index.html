@@ -41,6 +41,10 @@
   .who { display:flex; gap:6px; align-items:center; color:var(--dim); font-size:13px; }
   .who b { color:var(--text); font-weight:500; }
   .chips { display:flex; flex-wrap:wrap; gap:4px; }
+  a.btnlink { display:inline-block; font:inherit; color:var(--text); background:var(--panel2); border:1px solid var(--line2); border-radius:3px; padding:5px 11px; text-decoration:none; }
+  a.btnlink:hover { border-color:var(--dim); }
+  .rename { display:inline-flex; gap:6px; margin-left:6px; }
+  .rename input { width:160px; }
   .chips button { padding:3px 10px; position:relative; }
   .chips button.on { background:var(--accent2); border-color:var(--accent); color:#fff; }
   .chips button .x { margin-left:6px; color:var(--faint); display:none; }
@@ -801,7 +805,9 @@ function onStats(s) {
 $("filter").onchange = e => { filter = e.target.value; $("rows").innerHTML = ""; };
 $("pause").onclick = () => { paused = !paused; $("pause").textContent = paused ? "Resume view" : "Pause view"; };
 $("clear").onclick = () => { $("rows").innerHTML = ""; };
+let driverNames = [];
 function drawDriverChips(names, cur) {
+  driverNames = names;
   const box = $("driverchips"), key = cur + "\n" + names.join("\n");
   if (box.dataset.k === key) return;
   box.dataset.k = key;
@@ -881,10 +887,32 @@ async function selectSession(uid) {
   const valid = laps.filter(l => !l.invalid && l.time > 0);
   const best = valid.length ? Math.min(...valid.map(l => l.time)) : null;
   const rows = laps.map(l => `<tr><td>${l.lap}</td><td class="mono ${l.time === best ? "best" : ""} ${l.invalid ? "invalid" : ""}">${fmtMs(l.time)}${l.invalid ? " (invalid)" : ""}</td><td class="mono">${fmtSec(l.s1)}</td><td class="mono">${fmtSec(l.s2)}</td><td class="mono">${fmtSec(l.s3)}</td></tr>`).join("");
+  const own = s.src !== "f22";
   $("detail").innerHTML = `<p style="margin-top:0"><button id="playbtn">&#9654; Play in Live</button>
+    ${own ? `<a class="btnlink" id="dlbtn" href="/api/sessions/${encodeURIComponent(uid)}/download" title="Everything of this run as a zip: laps, corners, every raw packet">&#8681; Download</a>
+    <button id="renamebtn" title="Wrong name? Change the driver of this run (no data is removed)">Change driver</button>` : ""}
     <span style="color:var(--dim)"> ${s.packets.toLocaleString("en-GB")} ${s.src === "f22" ? "player samples" : "packets"} stored${s.src === "f22" ? " · old race, no damage data" : ""}</span></p>
     ${laps.length ? `<table><thead><tr><th>Lap</th><th>Time</th><th>S1</th><th>S2</th><th>S3</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">No lap times recorded in this session.</div>'}`;
   $("playbtn").onclick = () => startReplay(s);
+  if (own) {
+    $("dlbtn").onclick = () => { $("dlbtn").textContent = "Preparing download..."; setTimeout(() => { $("dlbtn").innerHTML = "&#8681; Download"; }, 8000); };
+    $("renamebtn").onclick = () => {
+      const p = $("renamebtn").parentElement;
+      if (p.querySelector(".rename")) return;
+      const box = document.createElement("span"); box.className = "rename";
+      box.innerHTML = `<input list="renamelist" placeholder="Driver of this run" value="${esc(s.driver || "")}"><datalist id="renamelist">${driverNames.map(n => `<option value="${esc(n)}">`).join("")}</datalist><button>Save</button>`;
+      p.appendChild(box);
+      const inp = box.querySelector("input"); inp.focus(); inp.select();
+      const save = async () => {
+        const name = inp.value.trim(); if (!name) return;
+        const r = await (await fetch(`/api/sessions/${encodeURIComponent(uid)}/driver`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ driver: name }) })).json();
+        if (r.error) { box.insertAdjacentHTML("beforeend", ` <span style="color:var(--red)">${esc(r.error)}</span>`); return; }
+        s.driver = r.driver; await loadSessions(); selectSession(uid);
+      };
+      box.querySelector("button").onclick = save;
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") save(); if (e.key === "Escape") box.remove(); });
+    };
+  }
 }
 $("reload").onclick = loadSessions;
 

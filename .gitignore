@@ -15,3 +15,5 @@ secrets*.txt
 config/drivers.json
 firewall.log
 zips/
+spool/
+downloads/

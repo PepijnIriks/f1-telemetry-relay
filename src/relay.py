@@ -1,7 +1,7 @@
 """
 F1 22 telemetry relay
 - Listens on UDP (default port 20777) for packets from the game
-- Forwards them IMMEDIATELY to the website (http://localhost:8000) over WebSocket
+- Forwards them IMMEDIATELY to the website (http://127.0.0.1:8000) over WebSocket
 - Parses the player's car + the whole field for the Live dashboard
 - Writes to PostgreSQL (Azure) in batches in the background: raw packets,
   an overview of sessions/races and lap times. The database can never slow down the live view.
@@ -11,7 +11,6 @@ F1 22 telemetry relay
   throttle point) so the Races tab can compare drivers corner by corner.
 """
 import asyncio
-import bisect
 import json
 import queue
 import struct
@@ -26,45 +25,14 @@ from aiohttp import web
 
 import intro
 import secrets_store
+import spool
 from azure_power import AzurePower
 from drivers import DriverList
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# ----------------------------------------------------------------- F1 22 packet formats (little endian)
-HEADER = struct.Struct("<HBBBBQfIBB")                      # 24 bytes
-HEADER_FIELDS = ("format", "major", "minor", "version", "packet_id",
-                 "session_uid", "session_time", "frame", "player", "player2")
-TEL_STRUCT = struct.Struct("<HfffBbHBBH4H4B4BH4f4B")       # 60 bytes per car (CarTelemetry)
-LAP_STRUCT = struct.Struct("<IIHHfff14BHHB")               # 43 bytes per car (LapData)
-STATUS_STRUCT = struct.Struct("<BBBBBfffHHBBHBBBbfBfffB")  # 47 bytes per car (CarStatus)
-DAMAGE_STRUCT = struct.Struct("<4f26B")                    # 42 bytes per car (CarDamage)
-MOTION_SIZE = 60                                           # bytes per car (Motion)
-assert (HEADER.size, TEL_STRUCT.size, LAP_STRUCT.size, STATUS_STRUCT.size, DAMAGE_STRUCT.size) == (24, 60, 43, 47, 42)
-
-PACKET_NAMES = {
-    0: "Motion", 1: "Session", 2: "LapData", 3: "Event", 4: "Participants",
-    5: "CarSetups", 6: "CarTelemetry", 7: "CarStatus", 8: "FinalClassification",
-    9: "LobbyInfo", 10: "CarDamage", 11: "SessionHistory",
-}
-TRACKS = {
-    0: "Melbourne", 1: "Paul Ricard", 2: "Shanghai", 3: "Sakhir (Bahrain)", 4: "Barcelona",
-    5: "Monaco", 6: "Montreal", 7: "Silverstone", 8: "Hockenheim", 9: "Hungaroring",
-    10: "Spa", 11: "Monza", 12: "Singapore", 13: "Suzuka", 14: "Abu Dhabi", 15: "Texas",
-    16: "Brazil", 17: "Austria", 18: "Sochi", 19: "Mexico", 20: "Baku",
-    21: "Sakhir Short", 22: "Silverstone Short", 23: "Texas Short", 24: "Suzuka Short",
-    25: "Hanoi", 26: "Zandvoort", 27: "Imola", 28: "Portimao", 29: "Jeddah", 30: "Miami",
-}
-SESSION_TYPES = {
-    0: "Unknown", 1: "Practice 1", 2: "Practice 2", 3: "Practice 3",
-    4: "Short practice", 5: "Qualifying 1", 6: "Qualifying 2", 7: "Qualifying 3",
-    8: "Short qualifying", 9: "One-shot qualifying", 10: "Race", 11: "Race 2",
-    12: "Race 3", 13: "Time trial",
-}
-WEATHER = {0: "Clear", 1: "Light cloud", 2: "Overcast", 3: "Light rain",
-           4: "Heavy rain", 5: "Storm"}
-COMPOUNDS = {16: "Soft", 17: "Medium", 18: "Hard", 7: "Inter", 8: "Wet"}
-
+from f1_format import (HEADER, HEADER_FIELDS, TEL_STRUCT, LAP_STRUCT, STATUS_STRUCT, DAMAGE_STRUCT,  # noqa: F401
+                       MOTION_SIZE, PACKET_NAMES, TRACKS, SESSION_TYPES, WEATHER, COMPOUNDS)
 
 def load_config():
     cfg = {"UDP_PORT": "20777", "HTTP_PORT": "8000", "DATABASE_URL": "",
@@ -179,132 +147,7 @@ def console_menu():
             loop_ref[0].call_soon_threadsafe(switch_driver, name, time.time())
 
 
-# ----------------------------------------------------------------- Official F1 corners
-CORNERS_FILE = ROOT / "config" / "corners.json"
-try:
-    CORNERS = {int(k): v for k, v in json.loads(CORNERS_FILE.read_text(encoding="utf-8")).items()
-               if not k.startswith("_")}
-except Exception as e:
-    print(f"[CORNERS] config/corners.json could not be read ({e}); no corner analysis")
-    CORNERS = {}
-BEFORE_M, AFTER_M, BRAKE_SEARCH_M = 150.0, 100.0, 400.0
-VIEW_BEFORE_M, VIEW_AFTER_M = 280.0, 180.0     # part of the track shown in the corner analysis
-TRACE_STEP = 2.0                               # the lap trace is stored every 2 metres
-
-
-def corner_layout(track_id, game_len):
-    """Corner zones for a track, scaled from the real lap length to the game's lap length.
-    Returns [(label, apex, zone_start, zone_end, brake_search_start, view_start, view_end)] in metres of
-    lap distance. zone = what the corner time is measured over; view = the wider part shown in the analysis."""
-    d = CORNERS.get(track_id)
-    if not d:
-        return []
-    real_len = float(d.get("length") or 0) or float(game_len or 1)
-    L = float(game_len or real_len)
-    k = L / real_len
-    pts = sorted(((lab, (dist + float(d.get("offset", 0))) * k) for lab, dist in d["corners"]), key=lambda c: c[1])
-    out = []
-    for i, (lab, a) in enumerate(pts):
-        prev_mid = (pts[i - 1][1] + a) / 2 if i else 0.0
-        next_mid = (a + pts[i + 1][1]) / 2 if i + 1 < len(pts) else L
-        start = max(a - BEFORE_M * k, prev_mid, 0.0)
-        end = min(a + AFTER_M * k, next_mid, L)
-        prev_apex = pts[i - 1][1] if i else 0.0
-        next_apex = pts[i + 1][1] if i + 1 < len(pts) else L
-        out.append((lab, a, start, end, max(a - BRAKE_SEARCH_M * k, prev_mid, 0.0),
-                    max(a - VIEW_BEFORE_M * k, prev_apex, 0.0), min(a + VIEW_AFTER_M * k, next_apex, L)))
-    return out
-
-
-def clean_samples(samples):
-    """Keep one increasing run of lap distance (a flashback rewinds the distance: drop what was undone)."""
-    out = []
-    for s in samples:
-        if s[0] < 0:
-            continue
-        while out and out[-1][0] >= s[0]:
-            out.pop()
-        out.append(s)
-    return out
-
-
-def corner_stats(samples, track_id, game_len):
-    """samples: [(lap_distance_m, lap_time_ms, speed_kmh, throttle, brake)] of ONE lap.
-    Returns one dict per official corner, or [] if the lap is not complete enough."""
-    layout = corner_layout(track_id, game_len)
-    s = clean_samples(samples)
-    if not layout or len(s) < 50:
-        return []
-    L = float(game_len or 0) or s[-1][0]
-    if s[0][0] > 0.05 * L or s[-1][0] < 0.95 * L:
-        return []                       # relay started mid-lap or the lap was cut off
-    dist = [x[0] for x in s]
-
-    def at(d, col):
-        i = bisect.bisect_left(dist, d)
-        if i <= 0:
-            return s[0][col]
-        if i >= len(s):
-            return s[-1][col]
-        a, b = s[i - 1], s[i]
-        f = (d - a[0]) / ((b[0] - a[0]) or 1)
-        return a[col] + (b[col] - a[col]) * f
-
-    out = []
-    for idx, (lab, apex, z0, z1, b0, _v0, _v1) in enumerate(layout):
-        i0, i1 = bisect.bisect_left(dist, z0), bisect.bisect_right(dist, z1)
-        zone = s[i0:i1]
-        if len(zone) < 2:
-            continue
-        low = min(zone, key=lambda x: x[2])
-        bi = bisect.bisect_left(dist, b0)
-        brake_at = next((x[0] for x in s[bi:bisect.bisect_right(dist, low[0])] if x[4] > 0.1), None)
-        gas_at = next((x[0] for x in s[bisect.bisect_left(dist, low[0]):i1] if x[3] >= 0.95), None)
-        out.append({
-            "corner": lab, "idx": idx, "apex": round(apex, 1),
-            "time": int(round(at(z1, 1) - at(z0, 1))),
-            "entry": round(at(z0, 2), 1), "min": round(low[2], 1), "exit": round(at(z1, 2), 1),
-            "min_at": round(low[0] - apex, 1),
-            "brake": round(apex - brake_at, 1) if brake_at is not None else None,
-            "gas": round(gas_at - apex, 1) if gas_at is not None else None,
-            "max_brake": round(max(x[4] for x in s[bi:i1]), 2) if i1 > bi else 0.0,
-        })
-    return out
-
-
-def lap_trace(samples, game_len):
-    """Resamples one lap to a point every TRACE_STEP metres: speed, throttle, brake and lap time.
-    Used for the corner analysis (speed lines per driver). None if the lap is not complete."""
-    s = clean_samples(samples)
-    if len(s) < 50:
-        return None
-    L = float(game_len or 0) or s[-1][0]
-    if s[0][0] > 0.05 * L or s[-1][0] < 0.95 * L:
-        return None
-    n = int(min(L, s[-1][0]) // TRACE_STEP) + 1
-    sp, th, br, tm = [], [], [], []
-    j = 0
-    for i in range(n):
-        d = i * TRACE_STEP
-        while j < len(s) - 2 and s[j + 1][0] < d:
-            j += 1
-        a, b = s[j], s[j + 1]
-        f = max(0.0, min(1.0, (d - a[0]) / ((b[0] - a[0]) or 1)))
-        tm.append(int(round(a[1] + (b[1] - a[1]) * f)))
-        sp.append(round(a[2] + (b[2] - a[2]) * f, 1))
-        th.append(round(a[3] + (b[3] - a[3]) * f, 2))
-        br.append(round(a[4] + (b[4] - a[4]) * f, 2))
-    return {"step": TRACE_STEP, "speed": sp, "throttle": th, "brake": br, "time": tm}
-
-
-def trace_row(run_id, lap, track_id, tlen, t):
-    return (run_id, lap, track_id, int(tlen or 0), t["step"], t["speed"], t["throttle"], t["brake"], t["time"])
-
-
-def corner_rows(run_id, lap, stats):
-    return [(run_id, lap, c["corner"], c["idx"], c["apex"], c["time"], c["entry"], c["min"], c["exit"],
-             c["min_at"], c["brake"], c["gas"], c["max_brake"]) for c in stats]
-
+from corners import CORNERS, corner_layout, corner_stats, lap_trace, trace_row, corner_rows
 
 # ----------------------------------------------------------------- Parsing
 def parse_telemetry(data, p):
@@ -566,99 +409,10 @@ class UdpProtocol(asyncio.DatagramProtocol):
 
 
 # ----------------------------------------------------------------- Database
-DDL = """
-CREATE TABLE IF NOT EXISTS f1_telemetry_raw (
-    id BIGSERIAL PRIMARY KEY,
-    received_at TIMESTAMPTZ NOT NULL,
-    driver TEXT,
-    session_uid TEXT,
-    packet_id SMALLINT,
-    frame BIGINT,
-    session_time REAL,
-    player_idx SMALLINT,
-    payload BYTEA
-);
-CREATE INDEX IF NOT EXISTS f1_telemetry_raw_session_idx
-    ON f1_telemetry_raw (session_uid, packet_id, frame);
-CREATE TABLE IF NOT EXISTS f1_sessions (
-    session_uid TEXT,
-    driver TEXT,
-    track_id SMALLINT,
-    session_type SMALLINT,
-    started_at TIMESTAMPTZ,
-    last_seen_at TIMESTAMPTZ,
-    packets BIGINT
-);
-CREATE TABLE IF NOT EXISTS f1_laps (
-    session_uid TEXT,
-    lap_num SMALLINT,
-    lap_time_ms INTEGER,
-    s1_ms INTEGER,
-    s2_ms INTEGER,
-    s3_ms INTEGER,
-    invalid BOOLEAN
-);
--- One "run" per driver: a game session can contain several runs (one per driver change).
--- Rows from before runs existed get run_id = session_uid.
-ALTER TABLE f1_telemetry_raw ADD COLUMN IF NOT EXISTS run_id TEXT;
-CREATE INDEX IF NOT EXISTS f1_telemetry_raw_run_idx ON f1_telemetry_raw (run_id, packet_id, frame);
-ALTER TABLE f1_sessions ADD COLUMN IF NOT EXISTS run_id TEXT;
-ALTER TABLE f1_sessions ADD COLUMN IF NOT EXISTS track_length INTEGER;
-UPDATE f1_sessions SET run_id = session_uid WHERE run_id IS NULL;
-ALTER TABLE f1_sessions DROP CONSTRAINT IF EXISTS f1_sessions_pkey;
-CREATE UNIQUE INDEX IF NOT EXISTS f1_sessions_run_idx ON f1_sessions (run_id);
-ALTER TABLE f1_laps ADD COLUMN IF NOT EXISTS run_id TEXT;
-UPDATE f1_laps SET run_id = session_uid WHERE run_id IS NULL;
-ALTER TABLE f1_laps DROP CONSTRAINT IF EXISTS f1_laps_pkey;
-CREATE UNIQUE INDEX IF NOT EXISTS f1_laps_run_idx ON f1_laps (run_id, lap_num);
--- Per lap and per official F1 corner (distances in metres, speeds in km/h, times in ms)
-CREATE TABLE IF NOT EXISTS f1_corners (
-    run_id TEXT,
-    lap_num SMALLINT,
-    corner TEXT,
-    corner_idx SMALLINT,
-    apex_m REAL,
-    time_ms INTEGER,
-    entry_kmh REAL,
-    min_kmh REAL,
-    exit_kmh REAL,
-    min_at_m REAL,
-    brake_before_m REAL,
-    throttle_after_m REAL,
-    max_brake REAL,
-    PRIMARY KEY (run_id, lap_num, corner)
-);
--- Per lap: speed / throttle / brake / lap time every step_m metres of lap distance (for speed-trace charts)
-CREATE TABLE IF NOT EXISTS f1_lap_traces (
-    run_id TEXT,
-    lap_num SMALLINT,
-    track_id SMALLINT,
-    track_length INTEGER,
-    step_m REAL,
-    speed REAL[],
-    throttle REAL[],
-    brake REAL[],
-    time_ms INTEGER[],
-    PRIMARY KEY (run_id, lap_num)
-);
-"""
-TRACE_INSERT = """
-    INSERT INTO f1_lap_traces (run_id, lap_num, track_id, track_length, step_m, speed, throttle, brake, time_ms)
-    VALUES %s ON CONFLICT (run_id, lap_num) DO UPDATE SET
-      track_id = EXCLUDED.track_id, track_length = EXCLUDED.track_length, step_m = EXCLUDED.step_m,
-      speed = EXCLUDED.speed, throttle = EXCLUDED.throttle, brake = EXCLUDED.brake, time_ms = EXCLUDED.time_ms"""
-CORNER_INSERT = """
-    INSERT INTO f1_corners (run_id, lap_num, corner, corner_idx, apex_m, time_ms, entry_kmh, min_kmh,
-                            exit_kmh, min_at_m, brake_before_m, throttle_after_m, max_brake) VALUES %s
-    ON CONFLICT (run_id, lap_num, corner) DO UPDATE SET
-      corner_idx = EXCLUDED.corner_idx, apex_m = EXCLUDED.apex_m, time_ms = EXCLUDED.time_ms,
-      entry_kmh = EXCLUDED.entry_kmh, min_kmh = EXCLUDED.min_kmh, exit_kmh = EXCLUDED.exit_kmh,
-      min_at_m = EXCLUDED.min_at_m, brake_before_m = EXCLUDED.brake_before_m,
-      throttle_after_m = EXCLUDED.throttle_after_m, max_brake = EXCLUDED.max_brake"""
+from schema import DDL, TRACE_INSERT, CORNER_INSERT  # noqa: E402
 
 schema_lock = threading.Lock()
 schema_ok = [False]
-
 
 def db_host():
     try:
@@ -710,24 +464,117 @@ def friendly_db_error(e):
     return msg.replace("\n", " ")[:220]
 
 
+# Data waiting for Azure. The writer thread swaps it out in one go, writes it, and puts it back if that failed.
+pending = spool.empty_batch()
+inflight = {"batch": None}           # batch being written right now (not confirmed by Azure yet)
+pending_lock = threading.Lock()
+SPOOL_AT = 20_000                    # packets in memory without database -> to disk
+SPOOL_AFTER_S = 30                   # or older than this without database -> to disk
+
+
+def write_batch(cur, b):
+    """Writes one batch inside the open transaction of cursor `cur`."""
+    from psycopg2 import Binary
+    from psycopg2.extras import execute_values
+    if b["pkts"]:
+        execute_values(cur, """
+            INSERT INTO f1_telemetry_raw
+            (received_at, driver, session_uid, packet_id, frame, session_time,
+             player_idx, payload, run_id) VALUES %s""",
+            [(r[0], r[1], r[2], r[3], r[4], r[5], r[6], Binary(r[7]), r[8]) for r in b["pkts"]],
+            template="(to_timestamp(%s), %s, %s, %s, %s, %s, %s, %s, %s)", page_size=1000)
+    if b["metas"]:
+        execute_values(cur, """
+            INSERT INTO f1_sessions
+            (run_id, session_uid, driver, track_id, session_type, track_length,
+             started_at, last_seen_at, packets)
+            VALUES %s
+            ON CONFLICT (run_id) DO UPDATE SET
+              driver = COALESCE(NULLIF(f1_sessions.driver, ''), EXCLUDED.driver),
+              track_id = CASE WHEN EXCLUDED.track_id >= 0 THEN EXCLUDED.track_id
+                              ELSE f1_sessions.track_id END,
+              session_type = CASE WHEN EXCLUDED.session_type >= 0 THEN EXCLUDED.session_type
+                                  ELSE f1_sessions.session_type END,
+              track_length = COALESCE(NULLIF(EXCLUDED.track_length, 0), f1_sessions.track_length),
+              last_seen_at = GREATEST(f1_sessions.last_seen_at, EXCLUDED.last_seen_at),
+              packets = GREATEST(f1_sessions.packets, EXCLUDED.packets)""",
+            [(rid, m["uid"], m["driver"], m["track"], m["stype"], m.get("tlen", 0),
+              m["first"], m["last"], m["packets"]) for rid, m in b["metas"].items()],
+            template="(%s, %s, %s, %s, %s, %s, to_timestamp(%s), to_timestamp(%s), %s)")
+    if b["laps"]:
+        execute_values(cur, """
+            INSERT INTO f1_laps
+            (session_uid, run_id, lap_num, lap_time_ms, s1_ms, s2_ms, s3_ms, invalid)
+            VALUES %s
+            ON CONFLICT (run_id, lap_num) DO UPDATE SET
+              lap_time_ms = EXCLUDED.lap_time_ms, s1_ms = EXCLUDED.s1_ms,
+              s2_ms = EXCLUDED.s2_ms, s3_ms = EXCLUDED.s3_ms,
+              invalid = EXCLUDED.invalid""", b["laps"])
+    if b["corners"]:
+        execute_values(cur, CORNER_INSERT, b["corners"])
+    if b["traces"]:
+        execute_values(cur, TRACE_INSERT, b["traces"])
+
+
+def drain_queue():
+    """Moves everything from the UDP thread's queue into `pending`."""
+    with pending_lock:
+        while True:
+            try:
+                msg = db_queue.get_nowait()
+            except queue.Empty:
+                return
+            kind = msg[0]
+            if kind == "pkt":
+                pending["pkts"].append(msg[1])
+            elif kind == "lap":
+                pending["laps"].append(msg[1])
+            elif kind == "meta":
+                pending["metas"][msg[1]] = msg[2]
+            elif kind == "corners":
+                pending["corners"].extend(msg[1])
+            elif kind == "trace":
+                pending["traces"].append(msg[1])
+
+
+def spool_everything(reason="relay is closing"):
+    """Writes everything that is not confirmed by Azure to disk (called when the relay stops)."""
+    if not state["db"]["enabled"]:
+        return
+    drain_queue()
+    with pending_lock:
+        b = {k: (dict(v) if isinstance(v, dict) else list(v)) for k, v in pending.items()}
+        if inflight["batch"] is not None:          # not confirmed yet: save it too (Azure may never get it)
+            spool.merge(b, inflight["batch"])
+            inflight["batch"] = None
+        for k, v in spool.empty_batch().items():
+            pending[k] = v
+    if not spool.is_empty(b):
+        spool.save(b)
+        print(f"[DB] {reason}: {len(b['pkts']):,} packets not in Azure yet are saved on this PC (folder 'spool') "
+              "and sent to Azure the next time the relay connects.", flush=True)
+
+
 def db_worker():
     url = CFG["DATABASE_URL"]
     if not url:
         state["db"]["hint"] = CFG["DB_SECRET_ERROR"] or "No database configured (run setup-keyvault.bat)"
         return
-    try:
-        import psycopg2 as pg
-        from psycopg2.extras import execute_values
-    except ImportError:
+    import importlib.util
+    if importlib.util.find_spec("psycopg2") is None:
         state["db"]["error"] = "psycopg2 not installed (run start.bat again)"
         return
 
     state["db"]["enabled"] = True
     conn = None
-    pkts, laps, metas, corners, traces = [], [], {}, [], []
     flush = float(CFG["DB_FLUSH_SECONDS"])
     last_flush = last_try = last_storage = 0.0
+    no_db_since = None
     last_report = None
+    waiting = spool.count()
+    if waiting:
+        print(f"[DB] {waiting:,} packets from an earlier session are waiting on this PC; "
+              "they are sent to Azure as soon as it is reachable.", flush=True)
 
     def report(ok, err=""):
         nonlocal last_report
@@ -740,32 +587,24 @@ def db_worker():
                 print(f"[DB] Connected to {db_host()} - tables ready, data is being stored")
             else:
                 print(f"[DB] ERROR at {db_host()}: {err}")
-                print("[DB] The relay retries every few seconds; no data is lost.")
+                print("[DB] The relay keeps retrying; data waits on this PC meanwhile, nothing is lost.")
+
+    def close():
+        nonlocal conn
+        try:
+            conn and conn.close()
+        except Exception:
+            pass
+        conn = None
 
     while True:
-        try:
-            msg = db_queue.get(timeout=0.5)
-            if msg[0] == "pkt":
-                pkts.append(msg[1])
-            elif msg[0] == "lap":
-                laps.append(msg[1])
-            elif msg[0] == "meta":
-                metas[msg[1]] = msg[2]
-            elif msg[0] == "corners":
-                corners.extend(msg[1])
-            elif msg[0] == "trace":
-                traces.append(msg[1])
-        except queue.Empty:
-            pass
+        time.sleep(0.25)
+        drain_queue()
         now = time.time()
 
         if not POWER.db_ready():
             if conn is not None:
-                try:
-                    conn.close()
-                except Exception:
-                    pass
-                conn = None
+                close()
             state["db"]["connected"] = False
             state["db"]["error"] = POWER.not_ready_text()
             last_report = None
@@ -779,12 +618,19 @@ def db_worker():
                     report(True)
                     last_storage = 0.0         # check the storage right after (re)connecting
                 except Exception as e:
-                    try:
-                        conn and conn.close()
-                    except Exception:
-                        pass
-                    conn = None
+                    close()
                     report(False, friendly_db_error(e))
+
+        # No database: don't keep piling up in memory, put it on disk
+        if conn is None:
+            no_db_since = no_db_since or now
+            with pending_lock:
+                n = len(pending["pkts"])
+            if n >= SPOOL_AT or (n and now - no_db_since >= SPOOL_AFTER_S):
+                spool_everything("database not reachable")
+                no_db_since = now
+        else:
+            no_db_since = None
 
         if conn and now - last_storage >= 600:          # every 10 minutes
             last_storage = now
@@ -797,63 +643,64 @@ def db_worker():
                 except Exception:
                     pass
 
-        if conn and (pkts or laps or metas or corners or traces) and (now - last_flush >= flush or len(pkts) >= 2000):
+        # Files saved on this PC earlier: send them first (oldest first), one file per round.
+        # New data waits until they are all in, so everything arrives in Azure in the right order.
+        files = spool.files() if conn else []
+        if conn:
+            if files:
+                path = files[0]
+                try:
+                    b = spool.load(path)
+                    with conn, conn.cursor() as cur:
+                        write_batch(cur, b)
+                    spool.done(path)
+                    state["db"]["written"] += len(b["pkts"])
+                    left = spool.count()
+                    print(f"[DB] Sent {len(b['pkts']):,} saved packets from this PC to Azure"
+                          + (f" ({left:,} still waiting)" if left else " - all saved data is in Azure now"), flush=True)
+                except (EOFError, ValueError, OSError) as e:      # damaged file: keep it aside, never delete data
+                    print(f"[DB] Could not read {path.name} ({e}); renamed to .bad, please report it", flush=True)
+                    try:
+                        path.rename(path.with_suffix(".bad"))
+                    except OSError:
+                        pass
+                except Exception as e:
+                    close()
+                    report(False, friendly_db_error(e))
+
+        with pending_lock:
+            n = len(pending["pkts"])
+            has = not spool.is_empty(pending)
+        if files and n >= SPOOL_AT:
+            spool_everything("catching up with saved data")
+            has = False
+        if conn and has and not files and (now - last_flush >= flush or n >= 2000):
+            with pending_lock:
+                b = {k: v for k, v in pending.items()}
+                for k, v in spool.empty_batch().items():
+                    pending[k] = v
+                inflight["batch"] = b
             try:
                 with conn, conn.cursor() as cur:
-                    if pkts:
-                        execute_values(cur, """
-                            INSERT INTO f1_telemetry_raw
-                            (received_at, driver, session_uid, packet_id, frame, session_time,
-                             player_idx, payload, run_id) VALUES %s""",
-                            [(r[0], r[1], r[2], r[3], r[4], r[5], r[6], pg.Binary(r[7]), r[8]) for r in pkts],
-                            template="(to_timestamp(%s), %s, %s, %s, %s, %s, %s, %s, %s)")
-                    if metas:
-                        execute_values(cur, """
-                            INSERT INTO f1_sessions
-                            (run_id, session_uid, driver, track_id, session_type, track_length,
-                             started_at, last_seen_at, packets)
-                            VALUES %s
-                            ON CONFLICT (run_id) DO UPDATE SET
-                              driver = EXCLUDED.driver,
-                              track_id = CASE WHEN EXCLUDED.track_id >= 0 THEN EXCLUDED.track_id
-                                              ELSE f1_sessions.track_id END,
-                              session_type = CASE WHEN EXCLUDED.session_type >= 0 THEN EXCLUDED.session_type
-                                                  ELSE f1_sessions.session_type END,
-                              track_length = COALESCE(NULLIF(EXCLUDED.track_length, 0), f1_sessions.track_length),
-                              last_seen_at = EXCLUDED.last_seen_at,
-                              packets = GREATEST(f1_sessions.packets, EXCLUDED.packets)""",
-                            [(rid, m["uid"], m["driver"], m["track"], m["stype"], m.get("tlen", 0),
-                              m["first"], m["last"], m["packets"]) for rid, m in metas.items()],
-                            template="(%s, %s, %s, %s, %s, %s, to_timestamp(%s), to_timestamp(%s), %s)")
-                    if laps:
-                        execute_values(cur, """
-                            INSERT INTO f1_laps
-                            (session_uid, run_id, lap_num, lap_time_ms, s1_ms, s2_ms, s3_ms, invalid)
-                            VALUES %s
-                            ON CONFLICT (run_id, lap_num) DO UPDATE SET
-                              lap_time_ms = EXCLUDED.lap_time_ms, s1_ms = EXCLUDED.s1_ms,
-                              s2_ms = EXCLUDED.s2_ms, s3_ms = EXCLUDED.s3_ms,
-                              invalid = EXCLUDED.invalid""", laps)
-                    if corners:
-                        execute_values(cur, CORNER_INSERT, corners)
-                    if traces:
-                        execute_values(cur, TRACE_INSERT, traces)
-                state["db"]["written"] += len(pkts)
+                    write_batch(cur, b)
+                with pending_lock:
+                    inflight["batch"] = None
+                state["db"]["written"] += len(b["pkts"])
                 state["db"]["last_ok"] = time.time()
                 report(True)
-                pkts, laps, metas, corners, traces = [], [], {}, [], []
-            except Exception as e:  # connection lost: keep the data and reconnect
-                try:
-                    conn.close()
-                except Exception:
-                    pass
-                conn = None
+            except Exception as e:  # connection lost: put the data back and reconnect
+                with pending_lock:
+                    if inflight["batch"] is b:
+                        inflight["batch"] = None
+                        spool.merge(pending, b)
+                close()
                 report(False, friendly_db_error(e))
             last_flush = time.time()
 
-        if len(pkts) > 200_000:
-            del pkts[:len(pkts) - 200_000]
-        state["db"]["pending"] = len(pkts) + db_queue.qsize()
+        with pending_lock:
+            mem = len(pending["pkts"])
+        state["db"]["spooled"] = spool.count() if int(now) % 5 == 0 or not conn else state["db"].get("spooled", 0)
+        state["db"]["pending"] = mem + db_queue.qsize() + state["db"].get("spooled", 0)
 
 
 def run_query(sql, params=()):
@@ -1098,6 +945,145 @@ async def api_laps(request):
         return web.json_response({"enabled": True, "error": friendly_db_error(e)})
     return web.json_response({"enabled": True, "laps": [
         {"lap": r[0], "time": r[1], "s1": r[2], "s2": r[3], "s3": r[4], "invalid": r[5]} for r in rows]})
+
+
+# ----------------------------------------------------------------- Run: change driver / download
+async def api_run_driver(request):
+    """Change the driver name of a stored run (e.g. someone forgot to switch). No data is removed."""
+    bad = db_unavailable()
+    if bad:
+        return bad
+    uid = request.match_info["uid"]
+    body = await request.json()
+    name = DRIVERS.resolve(str(body.get("driver", "")))
+    if not name:
+        return web.json_response({"error": "Give a name"})
+
+    def work():
+        conn = db_connect()
+        try:
+            with conn, conn.cursor() as cur:
+                cur.execute("UPDATE f1_sessions SET driver = %s WHERE run_id = %s", (name, uid))
+                if cur.rowcount == 0:
+                    return 0
+                cur.execute(f"UPDATE f1_telemetry_raw SET driver = %s WHERE {RUN_FILTER}", (name, uid, uid))
+                return cur.rowcount
+        finally:
+            conn.close()
+    try:
+        n = await asyncio.get_running_loop().run_in_executor(None, work)
+    except Exception as e:
+        return web.json_response({"error": friendly_db_error(e)})
+    if uid in sess:
+        sess[uid]["driver"] = name
+    print(f"[DRIVER] Run {uid} now belongs to {name} ({n:,} packets updated)", flush=True)
+    return web.json_response({"ok": True, "driver": name})
+
+
+DOWNLOAD_DIR = ROOT / "downloads"          # temporary zips for the download button
+DOWNLOAD_README = """F1 22 telemetry relay - one stored run
+
+run.json            driver, track, session type, start/end of the run
+laps.csv            lap times and sectors in ms (invalid = lap does not count)
+corners.csv         per lap and official F1 corner: corner time, entry/minimum/exit speed, braking and throttle point
+lap_traces.csv      per lap: speed / throttle / brake every 2 metres (JSON arrays)
+raw_packets.csv     EVERY packet the game sent, exactly as received:
+                    received_at (unix time), packet_id (0 Motion, 1 Session, 2 LapData, 3 Event, 4 Participants,
+                    5 CarSetups, 6 CarTelemetry, 7 CarStatus, 8 FinalClassification, 9 LobbyInfo, 10 CarDamage,
+                    11 SessionHistory), frame, session_time, player_idx, payload_hex (the raw bytes as hex,
+                    F1 22 UDP specification)
+"""
+
+
+def build_download(uid):
+    """Writes a zip with everything of one run to disk and returns its path."""
+    import csv
+    import io
+    import zipfile
+    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    for old in DOWNLOAD_DIR.glob("*.zip"):           # downloads from earlier are only temporary
+        if time.time() - old.stat().st_mtime > 3600:
+            try:
+                old.unlink()
+            except OSError:
+                pass
+    conn = db_connect()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""SELECT run_id, session_uid, driver, track_id, session_type, track_length,
+                                  extract(epoch FROM started_at), extract(epoch FROM last_seen_at), packets
+                           FROM f1_sessions WHERE run_id = %s""", (uid,))
+            row = cur.fetchone()
+            if not row:
+                raise ValueError("run not found")
+            meta = dict(zip(("run_id", "session_uid", "driver", "track_id", "session_type", "track_length",
+                             "started_at", "ended_at", "packets"), row))
+            meta["track"] = TRACKS.get(meta["track_id"], "Unknown")
+            meta["session"] = SESSION_TYPES.get(meta["session_type"], "Unknown")
+            for k in ("started_at", "ended_at"):
+                meta[k] = float(meta[k]) if meta[k] is not None else None
+            safe = "".join(c if c.isalnum() else "-" for c in f"{meta['driver'] or 'unknown'}-{meta['track']}")
+            when = time.strftime("%Y%m%d-%H%M", time.localtime(meta["started_at"] or time.time()))
+            path = DOWNLOAD_DIR / f"f1-run-{when}-{safe}.zip"
+
+            def table(sql, header):
+                cur.execute(sql, (uid,))
+                buf = io.StringIO()
+                w = csv.writer(buf)
+                w.writerow(header)
+                w.writerows(cur.fetchall())
+                return buf.getvalue()
+
+            with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+                z.writestr("README.txt", DOWNLOAD_README)
+                z.writestr("run.json", json.dumps(meta, indent=2))
+                z.writestr("laps.csv", table(
+                    "SELECT lap_num, lap_time_ms, s1_ms, s2_ms, s3_ms, invalid FROM f1_laps WHERE run_id = %s "
+                    "ORDER BY lap_num", ["lap", "lap_time_ms", "s1_ms", "s2_ms", "s3_ms", "invalid"]))
+                z.writestr("corners.csv", table(
+                    "SELECT lap_num, corner, apex_m, time_ms, entry_kmh, min_kmh, exit_kmh, min_at_m, "
+                    "brake_before_m, throttle_after_m, max_brake FROM f1_corners WHERE run_id = %s "
+                    "ORDER BY lap_num, corner_idx",
+                    ["lap", "corner", "apex_m", "time_ms", "entry_kmh", "min_kmh", "exit_kmh", "min_at_m",
+                     "brake_before_m", "throttle_after_m", "max_brake"]))
+                cur.execute("SELECT lap_num, step_m, speed, throttle, brake, time_ms FROM f1_lap_traces "
+                            "WHERE run_id = %s ORDER BY lap_num", (uid,))
+                buf = io.StringIO()
+                w = csv.writer(buf)
+                w.writerow(["lap", "step_m", "speed_kmh", "throttle", "brake", "time_ms"])
+                for r in cur.fetchall():
+                    w.writerow([r[0], r[1]] + [json.dumps(list(x) if x is not None else None) for x in r[2:]])
+                z.writestr("lap_traces.csv", buf.getvalue())
+        # raw packets: streamed with a server-side cursor, so even very long runs never fill the memory
+        with conn, conn.cursor(name="dl") as cur:
+            cur.itersize = 5000
+            cur.execute(f"""SELECT extract(epoch FROM received_at), packet_id, frame, session_time, player_idx,
+                                   encode(payload, 'hex')
+                            FROM f1_telemetry_raw WHERE {RUN_FILTER} ORDER BY id""", (uid, uid))
+            with zipfile.ZipFile(path, "a", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+                with z.open("raw_packets.csv", "w", force_zip64=True) as f:
+                    t = io.TextIOWrapper(f, encoding="utf-8", newline="")
+                    w = csv.writer(t)
+                    w.writerow(["received_at", "packet_id", "frame", "session_time", "player_idx", "payload_hex"])
+                    for r in cur:
+                        w.writerow([f"{float(r[0]):.6f}", r[1], r[2], r[3], r[4], r[5]])
+                    t.flush()
+                    t.detach()
+        return path
+    finally:
+        conn.close()
+
+
+async def api_run_download(request):
+    bad = db_unavailable()
+    if bad:
+        return bad
+    uid = request.match_info["uid"]
+    try:
+        path = await asyncio.get_running_loop().run_in_executor(None, build_download, uid)
+    except Exception as e:
+        return web.json_response({"error": friendly_db_error(e)}, status=500)
+    return web.FileResponse(path, headers={"Content-Disposition": f'attachment; filename="{path.name}"'})
 
 
 def sample_sql(length, per_car, every):
@@ -1462,7 +1448,9 @@ async def main():
     loop_ref.append(loop)
     if sys.stdin and sys.stdin.isatty():
         threading.Thread(target=console_menu, daemon=True).start()
-    await loop.create_datagram_endpoint(UdpProtocol, local_addr=("0.0.0.0", udp_port))
+    udp_host = CFG.get("UDP_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    web_host = CFG.get("WEB_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    await loop.create_datagram_endpoint(UdpProtocol, local_addr=(udp_host, udp_port))
 
     app = web.Application()
     app.add_routes([
@@ -1475,15 +1463,18 @@ async def main():
         web.get("/api/sessions/{uid}/replay", api_replay),
         web.get("/api/compare", api_compare),
         web.get("/api/trace", api_trace),
+        web.post("/api/sessions/{uid}/driver", api_run_driver),
+        web.get("/api/sessions/{uid}/download", api_run_download),
     ])
     runner = web.AppRunner(app)
     await runner.setup()
-    await web.TCPSite(runner, "0.0.0.0", http_port).start()
+    await web.TCPSite(runner, web_host, http_port).start()
     asyncio.create_task(broadcaster())
 
     print("=" * 62)
-    print(f" UDP:         listening on port {udp_port}  (game on this PC: IP 127.0.0.1)")
-    print(f" Website:     http://localhost:{http_port}   (tabs: Live / Raw / Races)")
+    print(f" UDP:         listening on {udp_host}:{udp_port}  (in the game: IP 127.0.0.1, port {udp_port})")
+    print(f" Website:     http://127.0.0.1:{http_port}   (tabs: Live / Raw / Races)"
+          + ("" if web_host == "127.0.0.1" else f"  - also open for other devices on the network ({web_host})"))
     print(f" Config:      {ROOT / 'config' / 'config.env'}")
     print(f" Database:    {('on, server ' + db_host() + ' (login from ' + CFG['DB_SOURCE'] + ')') if CFG['DATABASE_URL'] else 'OFF (' + (CFG['DB_SECRET_ERROR'] or 'not configured') + ')'}")
     print(f" Drivers:     {DRIVERS.numbered() or '(none yet: add names on the website)'}")
@@ -1491,7 +1482,7 @@ async def main():
     print(f" Driver:      {state['driver'] or '(empty)'}")
     print("=" * 62)
     if "--no-browser" not in sys.argv:
-        webbrowser.open(f"http://localhost:{http_port}/")
+        webbrowser.open(f"http://127.0.0.1:{http_port}/")
     await asyncio.Event().wait()
 
 
@@ -1512,10 +1503,16 @@ if __name__ == "__main__":
         except EOFError:
             pass
     threading.Thread(target=db_worker, daemon=True).start()
+    POWER.before_exit = spool_everything
     if CFG["DATABASE_URL"]:
         POWER.start_thread()
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        POWER.on_exit()
-        print("\nStopped.")
+        # Give Azure a few seconds to take what is still waiting, then save the rest on this PC
+        end = time.time() + 8
+        while state["db"]["connected"] and (len(pending["pkts"]) or db_queue.qsize()) and time.time() < end:
+            time.sleep(0.3)
+        spool_everything()
+        POWER.on_exit(wait_flush=0)
+        print(f"\nStopped ({state['total']:,} packets received this session).")

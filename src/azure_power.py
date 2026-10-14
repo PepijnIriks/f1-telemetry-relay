@@ -47,6 +47,7 @@ class AzurePower:
         self.start_reason = "relay started"
         self.wake = threading.Event()
         self.exit_done = False
+        self.before_exit = None       # set by relay.py: saves unsent data to disk
         self.firewall = _yes(cfg.get("AZURE_AUTO_FIREWALL", "1"))
         self.fw_rule = "relay-" + re.sub(r"[^A-Za-z0-9_-]", "-", socket.gethostname())[:40]
         self.fw_ip = ""
@@ -317,7 +318,12 @@ class AzurePower:
             HANDLER = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_uint)
 
             def handler(event):
-                if event == 2:            # CTRL_CLOSE_EVENT
+                if event in (2, 5, 6):    # window closed, log off, shut down
+                    if self.before_exit:
+                        try:
+                            self.before_exit()       # save data that is not in Azure yet (relay.py)
+                        except Exception:
+                            pass
                     self._spawn_stop()
                     return 1
                 return 0                  # Ctrl+C goes through KeyboardInterrupt as usual
