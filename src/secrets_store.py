@@ -92,3 +92,20 @@ def database_url(cfg, interactive=True):
     if rc != 0 or not out:
         return "", "", "Key Vault: " + explain(err or "empty secret", vault)
     return out, f"Azure Key Vault '{vault}'", ""
+
+
+if __name__ == "__main__":
+    # "python src/secrets_store.py --check": exit code 0 when the login can be read (used by start.bat)
+    import sys
+    from pathlib import Path
+    cfg = {}
+    path = Path(__file__).resolve().parent.parent / "config" / "config.env"
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                cfg[k.strip()] = v.strip().strip('"')
+    url, where, err = database_url(cfg)
+    print(f"[SECRETS] OK: database login found in {where}" if url else f"[SECRETS] {err}")
+    sys.exit(0 if url else 1)

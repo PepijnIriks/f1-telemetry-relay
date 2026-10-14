@@ -40,7 +40,12 @@
   .st i.on { background:var(--green); } .st i.warn { background:var(--amber); }
   .who { display:flex; gap:6px; align-items:center; color:var(--dim); font-size:13px; }
   .who b { color:var(--text); font-weight:500; }
-  .who .pick { color:var(--amber); font-size:12px; white-space:nowrap; }
+  .chips { display:flex; flex-wrap:wrap; gap:4px; }
+  .chips button { padding:3px 10px; position:relative; }
+  .chips button.on { background:var(--accent2); border-color:var(--accent); color:#fff; }
+  .chips button .x { margin-left:6px; color:var(--faint); display:none; }
+  .chips button:hover .x { display:inline; }
+  .chips button .x:hover { color:var(--red); }
   header input { width:130px; padding:3px 8px; }
   header .who button { padding:3px 10px; }
   .dbmsg { margin:12px 20px 0; padding:8px 12px; border-left:3px solid var(--amber); background:var(--panel); color:var(--amber); font-size:13px; }
@@ -221,7 +226,7 @@
   <span class="st"><i id="wsdot"></i><span id="wstxt">connecting...</span></span>
   <span class="st"><i id="gamedot"></i><span id="gametxt">no game data</span></span>
   <span class="st"><i id="dbdot"></i><span id="dbtxt">database</span></span>
-  <span class="who">driver <b id="driver">-</b><span id="pickpending" class="pick" hidden></span><input id="drivername" placeholder="Name" list="drivernames" title="Pick a name from the list or type a new one"><datalist id="drivernames"></datalist><button id="setdriver">Set</button></span>
+  <span class="who">driver <span id="driverchips" class="chips" role="group" aria-label="Choose driver"></span><b id="driver" hidden>-</b><input id="drivername" placeholder="New name" title="Type a new name and press Enter"><button id="setdriver">Add</button></span>
 </header>
 <div id="dbmsg"></div>
 
@@ -768,11 +773,7 @@ function onStats(s) {
   lastTotal = s.total; lastBytes = s.bytes;
   $("uptime").textContent = fmtDur(s.uptime);
   $("driver").textContent = s.driver || "-";
-  const pk = s.picker || {};
-  $("pickpending").hidden = !pk.pending;
-  if (pk.pending) $("pickpending").textContent = `\u2192 ${pk.pending} in ${Math.ceil(pk.left)} s`;
-  const dl = $("drivernames"), want = (pk.names || []).join("\n");
-  if (dl.dataset.v !== want) { dl.dataset.v = want; dl.innerHTML = (pk.names || []).map(n => `<option value="${esc(n)}">`).join(""); }
+  drawDriverChips(s.drivers || [], s.driver || "");
   if (!replay) $("st-driver").textContent = s.driver || "-";
   const live = Date.now() - lastPacketAt < 2000 && s.total > 0;
   $("gamedot").classList.toggle("on", live);
@@ -797,6 +798,23 @@ function onStats(s) {
 $("filter").onchange = e => { filter = e.target.value; $("rows").innerHTML = ""; };
 $("pause").onclick = () => { paused = !paused; $("pause").textContent = paused ? "Resume view" : "Pause view"; };
 $("clear").onclick = () => { $("rows").innerHTML = ""; };
+function drawDriverChips(names, cur) {
+  const box = $("driverchips"), key = cur + "\n" + names.join("\n");
+  if (box.dataset.k === key) return;
+  box.dataset.k = key;
+  // the current driver is always shown, even if it is not in the list
+  const all = cur && !names.some(n => n.toLowerCase() === cur.toLowerCase()) ? [cur, ...names] : names;
+  $("driver").hidden = all.length > 0;
+  box.innerHTML = all.map(n => `<button type="button" data-n="${esc(n)}" class="${n.toLowerCase() === cur.toLowerCase() ? "on" : ""}" title="Click: ${esc(n)} drives now">${esc(n)}<span class="x" data-x="1" title="Remove from the list">\u00d7</span></button>`).join("");
+}
+async function driverApi(body) {
+  await fetch("/api/driver", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+}
+$("driverchips").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (e.target.dataset.x) driverApi({ remove: b.dataset.n });
+  else if (!b.classList.contains("on")) driverApi({ driver: b.dataset.n });
+});
 $("setdriver").onclick = async () => {
   const driver = $("drivername").value.trim();
   await fetch("/api/driver", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({driver}) });

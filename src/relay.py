@@ -27,7 +27,7 @@ from aiohttp import web
 import intro
 import secrets_store
 from azure_power import AzurePower
-from driver_select import DriverPicker
+from drivers import DriverList
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -157,14 +157,26 @@ def switch_driver(name, now):
     live_dirty[0] = True
 
 
-def note(text):
-    events.insert(0, {"t": time.time(), "text": text})
-    del events[40:]
-    events_dirty[0] = True
+# Names to choose from (website, driver menu window, black window); see src/drivers.py
+DRIVERS = DriverList(CFG)
+loop_ref = []
 
 
-# Choosing the driver with a button in the game (see src/driver_select.py)
-PICKER = DriverPicker(CFG, lambda name: switch_driver(name, time.time()), lambda: state["driver"], note)
+def console_menu():
+    """Change the driver from the black window: type a number (or a new name) and press Enter."""
+    while True:
+        try:
+            line = input()
+        except (EOFError, OSError):
+            return
+        line = line.strip()
+        if not line:
+            print(f"[DRIVER] Now: {state['driver'] or '(empty)'}.  Choose: {DRIVERS.numbered() or '(no names yet)'}"
+                  "  -> type a number or a new name + Enter")
+            continue
+        name = DRIVERS.resolve(line)
+        if loop_ref:
+            loop_ref[0].call_soon_threadsafe(switch_driver, name, time.time())
 
 
 # ----------------------------------------------------------------- Official F1 corners
@@ -466,8 +478,6 @@ def parse_event(data, now):
         text = "DRS disabled"
     elif code == "FLBK":
         text = "Flashback used"
-    elif code == "BUTN":
-        PICKER.on_buttons(struct.unpack_from("<I", data, 28)[0], now)
     if text:
         events.insert(0, {"t": now, "text": text})
         del events[40:]
@@ -863,11 +873,16 @@ async def ws_handler(request):
 
 async def set_driver(request):
     body = await request.json()
-    name = str(body.get("driver", "")).strip()[:60]
-    PICKER.add(name)
-    PICKER.pending = None                 # a choice on the website wins over a half-made choice in the game
+    if body.get("remove"):
+        DRIVERS.remove(str(body["remove"]))
+        return web.json_response({"driver": state["driver"], "names": DRIVERS.names})
+    name = DRIVERS.resolve(str(body.get("driver", "")))
     switch_driver(name, time.time())
-    return web.json_response({"driver": state["driver"]})
+    return web.json_response({"driver": state["driver"], "names": DRIVERS.names})
+
+
+async def get_driver(request):
+    return web.json_response({"driver": state["driver"], "names": DRIVERS.names})
 
 
 LEGACY = "f22_"   # tables of the earlier collector (read only)
@@ -1356,7 +1371,6 @@ async def broadcaster():
     while True:
         await asyncio.sleep(0.025)
         now = time.time()
-        PICKER.tick(now)
 
         if now - last_meta >= 2:
             last_meta = now
@@ -1396,7 +1410,7 @@ async def broadcaster():
                          "by_type": {PACKET_NAMES.get(k, str(k)): v
                                      for k, v in sorted(state["by_type"].items())},
                          "uptime": now - state["started"], "driver": state["driver"],
-                         "picker": PICKER.status(now),
+                         "drivers": DRIVERS.names,
                          "db": state["db"], "now": now})
         for m in msgs:
             text = json.dumps(m)
@@ -1412,12 +1426,16 @@ async def main():
     http_port = int(CFG["HTTP_PORT"])
 
     loop = asyncio.get_running_loop()
+    loop_ref.append(loop)
+    if sys.stdin and sys.stdin.isatty():
+        threading.Thread(target=console_menu, daemon=True).start()
     await loop.create_datagram_endpoint(UdpProtocol, local_addr=("0.0.0.0", udp_port))
 
     app = web.Application()
     app.add_routes([
         web.get("/", index), web.get("/raw", old_raw), web.get("/ws", ws_handler),
         web.post("/api/driver", set_driver),
+        web.get("/api/driver", get_driver),
         web.post("/api/db/start", api_db_start),
         web.get("/api/sessions", api_sessions),
         web.get("/api/sessions/{uid}/laps", api_laps),
@@ -1435,8 +1453,8 @@ async def main():
     print(f" Website:     http://localhost:{http_port}   (tabs: Live / Raw / Races)")
     print(f" Config:      {ROOT / 'config' / 'config.env'}")
     print(f" Database:    {('on, server ' + db_host() + ' (login from ' + CFG['DB_SOURCE'] + ')') if CFG['DATABASE_URL'] else 'OFF (' + (CFG['DB_SECRET_ERROR'] or 'not configured') + ')'}")
-    if PICKER.names:
-        print(f" Drivers:     {', '.join(PICKER.names)}  (in game: UDP Action buttons, see README)")
+    print(f" Drivers:     {DRIVERS.numbered() or '(none yet: add names on the website)'}")
+    print("              change driver: website, the 'F1 driver' window, or type a number here + Enter")
     print(f" Driver:      {state['driver'] or '(empty)'}")
     print("=" * 62)
     if "--no-browser" not in sys.argv:
@@ -1449,15 +1467,15 @@ if __name__ == "__main__":
         intro.play()
     load_database_url()
     if "--driver" in sys.argv:
-        state["driver"] = PICKER.from_input(sys.argv[sys.argv.index("--driver") + 1])
+        state["driver"] = DRIVERS.resolve(sys.argv[sys.argv.index("--driver") + 1])
     else:
         try:
-            if PICKER.names:
-                print(f"Drivers: {PICKER.numbered()}")
-                ask = "Who drives first? Number or name (Enter = choose later in the game or on the web page): "
+            if DRIVERS.names:
+                print(f"Drivers: {DRIVERS.numbered()}")
+                ask = "Who drives first? Number or name (Enter = choose later): "
             else:
                 ask = "Driver name (Enter = fill it in later on the web page): "
-            state["driver"] = PICKER.from_input(input(ask))
+            state["driver"] = DRIVERS.resolve(input(ask))
         except EOFError:
             pass
     threading.Thread(target=db_worker, daemon=True).start()

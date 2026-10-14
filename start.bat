@@ -21,13 +21,18 @@ if not exist .venv (
   call .venv\Scripts\activate.bat
 )
 
-REM First time on a new PC: no Key Vault set yet -> run the Key Vault setup first
-findstr /r /c:"^KEYVAULT_NAME=." config\config.env >nul 2>nul
+REM Can the database login be read from Azure Key Vault? If not (first time on a new PC,
+REM no permission or no secret yet), run the Key Vault setup first.
+python src\secrets_store.py --check
 if errorlevel 1 python src\setup_keyvault.py
 
 REM Optional: "start.bat simulate" sends fake data so you can show everything works without the game
 if /i "%1"=="simulate" start "F1 simulation" cmd /k python src\simulate.py
 if /i "%1"=="simulatie" start "F1 simulation" cmd /k python src\simulate.py
+
+REM The small "F1 driver" window (click a name to change driver). Turn off with DRIVER_MENU=0
+findstr /r /c:"^DRIVER_MENU=0" config\config.env >nul 2>nul
+if errorlevel 1 start "" pythonw src\driver_menu.py
 
 python src\relay.py
 pause

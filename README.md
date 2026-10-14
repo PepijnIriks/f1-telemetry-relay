@@ -17,10 +17,10 @@ Everything is written to PostgreSQL (Azure) in the background. The database can 
 3. Install the Azure CLI. In PowerShell: `winget install -e --id Microsoft.AzureCLI`.
    Close PowerShell, open a new one and run `az login` (log in with your Fontys account).
 4. Double-click `start.bat`. The first time it installs the Python packages and, because no key vault
-   is set yet, it starts the **Key Vault setup** (see "Database login: Azure Key Vault").
+   can be read yet, it starts the **Key Vault setup** (see "Database login: Azure Key Vault").
 5. In F1 22: Settings > Telemetry Settings: UDP Telemetry **On**, UDP Broadcast Mode **Off**,
    UDP IP Address **127.0.0.1**, UDP Port **20777**, UDP Send Rate **20Hz** or higher, UDP Format **2022**.
-6. Bind the driver buttons in the game (see "Choosing the driver in the game").
+6. Put the names of your group in `DRIVERS=` in `config/config.env`.
 
 ## Starting
 - Windows: double-click `start.bat`
@@ -45,36 +45,27 @@ The website opens automatically at http://localhost:8000 (tabs: `#live`, `#raw`,
 | `src/intro.py` | The startup animation |
 | `src/secrets_store.py` | Reads the database login from Azure Key Vault |
 | `src/setup_keyvault.py` | Used by `setup-keyvault.bat` |
-| `src/driver_select.py` | Choosing the driver with a button in the game |
+| `src/drivers.py` | The list of driver names |
+| `src/driver_menu.py` | The small "F1 driver" window |
 | `src/simulate.py` | Fake game for testing and demos |
 | `src/inspect_db.py` | Used by `inspect-db.bat` |
 | `web/index.html` | The website (Live / Raw / Races) |
 | `requirements.txt` | Python packages (installed automatically) |
 
-## Choosing the driver in the game
-You don't have to leave the game to change drivers. F1 22 has 12 "UDP Action" buttons that do nothing in the
-game itself but are sent along with the telemetry. The relay uses two of them:
+## Choosing the driver
+Three ways, all doing the same thing (the current run is closed and a new run starts for the new driver):
 
-| Button (default) | What |
+| Where | How |
 |---|---|
-| **UDP Action 1** | next name in the list |
-| **UDP Action 2** | previous name in the list |
+| **Website** | Click a name at the top right. Type a new name in "New name" and press Enter to add someone. Hover a name and click × to remove it from the list |
+| **"F1 driver" window** | Opens by itself next to the relay. Click a name (or press 1-9). Type a new name + Enter to add, right-click a name to remove it. "Always on top" keeps it above the game (game in windowed / borderless mode) |
+| **Black relay window** | Type the number of a name (or a new name) and press Enter. Enter on an empty line shows the list |
 
-1. Put the names in `config/config.env`: `DRIVERS=Pepijn,Mathijs,Name3,Name4`.
-2. In F1 22: **Settings > Controls, Vibration & Force Feedback** > choose your wheel/controller > **Edit Mappings**,
-   scroll down to **UDP Action 1** and **UDP Action 2** and give them a free button (e.g. two buttons on the wheel).
-3. While driving or in the garage: press **UDP Action 1** until you hear your name (Windows reads it out loud), then
-   just wait 3 seconds. The relay switches the driver (new run) and says "<name> driving".
-   Scrolling past other names does not create runs for them; only the name you stop on counts.
+The names come from `DRIVERS=` in `config/config.env`; names added later are remembered in `config/drivers.json`.
+When `start.bat` starts you can also pick the first driver by number. Turn the window off with `DRIVER_MENU=0`.
 
-Settings in `config/config.env`: `DRIVER_NEXT_BUTTON` / `DRIVER_PREV_BUTTON` (UDP1..UDP12, or a combination of
-normal buttons such as `L1+R1`), `DRIVER_CONFIRM_BUTTON` (optional: apply right away instead of waiting),
-`DRIVER_CONFIRM_SECONDS` (default 3) and `ANNOUNCE_DRIVER` (0 = no voice).
-The website shows the name being chosen in orange next to the driver ("→ Mathijs in 2 s").
-When `start.bat` starts you can also pick the first driver by number.
-
-## Changing drivers on the website
-Type the new name (or pick one from the list) at the top right of the website and click **Set** (or press Enter). The relay then:
+## What happens when you change drivers
+When you pick another name (website, window or black window), the relay:
 - closes the run of the previous driver (it stays in the database with that driver's name),
 - starts a new run for the new driver with the next game data, even if the game session just continues
   (you don't have to restart the session).
@@ -117,8 +108,9 @@ No username or password is stored in the code or in `config/config.env`. The ful
 `az login`. `config/config.env` only contains the name of the vault (`KEYVAULT_NAME`) and of the secret
 (`KEYVAULT_SECRET`, default `f1-database-url`).
 
-Set it up once with `setup-keyvault.bat` (start.bat starts it by itself if `KEYVAULT_NAME` is empty). It:
-1. creates the key vault in the same resource group and region as the database (if it does not exist yet),
+The vault is **F1Vault** (resource group F1, Poland Central). Set it up once with `setup-keyvault.bat`
+(start.bat starts it by itself when the login can't be read yet). It:
+1. uses the vault in `KEYVAULT_NAME` (or creates one if it does not exist),
 2. gives your own account access to the secrets,
 3. looks up the server name and admin username in Azure (you don't type them),
 4. asks for the database password (hidden) **or** makes a new strong password and sets it on the server,

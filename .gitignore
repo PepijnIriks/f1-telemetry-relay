@@ -12,3 +12,4 @@ config/old_races_cache.json
 *.local.env
 .env
 secrets*.txt
+config/drivers.json
