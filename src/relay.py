@@ -484,6 +484,57 @@ def parse_event(data, now):
         events_dirty[0] = True
 
 
+# ----------------------------------------------------------------- Saving storage in Azure
+# The game sends the fast packets (Motion, LapData, CarTelemetry, CarStatus) up to 60 times per second.
+# For the database that is far more than needed: replays and the corner comparison of old runs work fine
+# with 10 per second. The live view and the live corner analysis still use EVERY packet.
+FAST_PACKETS = {0, 2, 6, 7}
+RAW_HZ = float(CFG.get("RAW_STORE_HZ", "10") or 0)
+raw_last = {}
+
+
+def keep_raw(run_id, pid, now):
+    if RAW_HZ <= 0 or pid not in FAST_PACKETS:
+        return True
+    key = (run_id, pid)
+    if now - raw_last.get(key, 0.0) < 1.0 / RAW_HZ - 0.002:
+        return False
+    raw_last[key] = now
+    return True
+
+
+def storage_check(conn):
+    """Shows how full the database is, and removes the OLDEST raw packets when they pass RAW_MAX_GB.
+    Lap times, sectors, corner analysis and speed lines (f1_laps, f1_corners, f1_lap_traces, f1_sessions)
+    are never removed; old runs then still show up in Races and in the corner comparison."""
+    gb = 1024 ** 3
+    max_gb = float(CFG.get("RAW_MAX_GB", "40") or 0)
+    with conn, conn.cursor() as cur:
+        cur.execute("""SELECT pg_database_size(current_database()), pg_total_relation_size('f1_telemetry_raw'),
+                              coalesce(n_live_tup, 0), coalesce(n_dead_tup, 0)
+                       FROM pg_stat_user_tables WHERE relname = 'f1_telemetry_raw'""")
+        row = cur.fetchone()
+    if not row:
+        return
+    db_size, raw_size, live, dead = row
+    raw_live = raw_size * live / max(live + dead, 1)          # space taken by rows that still exist
+    state["db"]["size_gb"] = round(db_size / gb, 2)
+    state["db"]["raw_gb"] = round(raw_live / gb, 2)
+    print(f"[DB] Storage: database {db_size / gb:.1f} GB in total, raw packets {raw_live / gb:.1f} GB"
+          + (f" (limit {max_gb:g} GB)" if max_gb > 0 else ""), flush=True)
+    if max_gb <= 0 or raw_live <= max_gb * gb or live == 0:
+        return
+    # Remove the oldest raw packets until they are back at 90 % of the limit
+    remove = int(live * (1 - (max_gb * 0.9 * gb) / raw_live))
+    print(f"[DB] Raw packets are over the limit: removing the oldest {remove:,} raw packets "
+          "(lap times and corner analysis stay)...", flush=True)
+    with conn, conn.cursor() as cur:
+        cur.execute("SET LOCAL statement_timeout = 600000")
+        cur.execute("""DELETE FROM f1_telemetry_raw WHERE id IN
+                       (SELECT id FROM f1_telemetry_raw ORDER BY id LIMIT %s)""", (remove,))
+        print(f"[DB] Removed {cur.rowcount:,} old raw packets; the space is reused for new data.", flush=True)
+
+
 # ----------------------------------------------------------------- UDP
 class UdpProtocol(asyncio.DatagramProtocol):
     def datagram_received(self, data, addr):
@@ -539,7 +590,7 @@ class UdpProtocol(asyncio.DatagramProtocol):
             meta["race_st"] = h["session_time"]
             POWER.race()
 
-        if state["db"]["enabled"]:
+        if state["db"]["enabled"] and keep_raw(run_id, pid, now):
             db_queue.put(("pkt", (now, meta["driver"], uid, pid, h["frame"],
                                   h["session_time"], p, data, run_id)))
 
@@ -705,7 +756,7 @@ def db_worker():
     conn = None
     pkts, laps, metas, corners, traces = [], [], {}, [], []
     flush = float(CFG["DB_FLUSH_SECONDS"])
-    last_flush = last_try = 0.0
+    last_flush = last_try = last_storage = 0.0
     last_report = None
 
     def report(ok, err=""):
@@ -756,6 +807,7 @@ def db_worker():
                     conn = db_connect()
                     ensure_schema(conn)
                     report(True)
+                    last_storage = 0.0         # check the storage right after (re)connecting
                 except Exception as e:
                     try:
                         conn and conn.close()
@@ -763,6 +815,17 @@ def db_worker():
                         pass
                     conn = None
                     report(False, friendly_db_error(e))
+
+        if conn and now - last_storage >= 600:          # every 10 minutes
+            last_storage = now
+            try:
+                storage_check(conn)
+            except Exception as e:
+                print(f"[DB] Storage check failed: {friendly_db_error(e)}", flush=True)
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
 
         if conn and (pkts or laps or metas or corners or traces) and (now - last_flush >= flush or len(pkts) >= 2000):
             try:

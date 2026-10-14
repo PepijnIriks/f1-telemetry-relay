@@ -375,6 +375,7 @@
     <div class="stat"><div class="v" id="uptime">0s</div><div class="l">running for</div></div>
     <div class="stat"><div class="v" id="dbwritten">0</div><div class="l">in database</div></div>
     <div class="stat"><div class="v" id="dbpending">0</div><div class="l">waiting for database</div></div>
+    <div class="stat"><div class="v" id="dbsize">-</div><div class="l">database size</div></div>
   </div>
   <div class="types" id="types"></div>
   <div class="controls">
@@ -781,6 +782,7 @@ function onStats(s) {
   const db = s.db;
   $("dbwritten").textContent = db.written.toLocaleString("en-GB");
   $("dbpending").textContent = db.pending.toLocaleString("en-GB");
+  if (db.size_gb != null) $("dbsize").textContent = `${db.size_gb.toFixed(1)} GB`;
   const dbled = $("dbdot"); dbled.classList.toggle("on", !!db.connected); dbled.classList.toggle("warn", db.enabled && !db.connected && !db.error);
   $("dbtxt").textContent = !db.enabled ? "database not linked" : db.error ? "database error" : db.connected ? "database OK" : "database connecting...";
   if (db.error) $("dbmsg").innerHTML = `<div class="dbmsg err">Database error: ${esc(db.error)}. The relay keeps retrying; no data is lost.</div>`;

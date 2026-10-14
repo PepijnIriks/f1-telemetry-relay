@@ -161,6 +161,18 @@ so they never clash with other tables in the same database:
 Runs stored before the driver-switch feature keep `run_id` = their `session_uid`; the relay adds the new
 columns itself on start (nothing to do by hand).
 
+## Keeping costs down
+The Azure server is a Burstable B1ms with 64 GB storage and **storage autogrow off**, so the storage bill is
+fixed and can't grow by itself. The things that matter:
+- **Database off when nobody races** (see "Database on/off"): compute is billed per hour only while it is on.
+- **Less data:** the fast packets (motion, lap data, telemetry, status) are stored at most `RAW_STORE_HZ`
+  times per second (default 10, the game sends up to 60). Live view and live corner analysis still get every packet.
+- **Never full:** a full database becomes read-only. When the raw packets pass `RAW_MAX_GB` (default 40 GB),
+  the relay removes the **oldest raw packets** automatically. Lap times, sectors, corner analysis and speed lines
+  are always kept, so old runs stay visible in Races and in the corner comparison (only their replay gets lost).
+  `RAW_MAX_GB=0` turns this off.
+- The size is printed every 10 minutes in the black window (`[DB] Storage: ...`) and shown on the Raw tab.
+
 ## Old races
 The relay reads (read only) the tables `f22_car_telemetry`, `f22_lap_data`, `f22_motion`, `f22_session` and `f22_session_history` of the earlier collector, if they are in the same database. If that fails, a message appears at the top of the Races tab; run `inspect-db.bat` to see what is in the database.
 
