@@ -92,7 +92,7 @@ The website opens automatically at http://127.0.0.1:8000 (tabs: `#live`, `#raw`,
 | `demo.bat` | Demo with a fake game; nothing is stored |
 | `inspect-db.bat` | Shows all tables and row counts in the Azure database |
 | `setup-keyvault.bat` | Once: puts the database login in Azure Key Vault |
-| `export_csv.py` | Exports all database tables to CSV (`python export_csv.py`) |
+| `export.bat` | Exports every database table to CSV (folder `exports\<date_time>`), starts the database if needed |
 | `config/config.env` | Settings: ports, name of the key vault, Azure on/off, driver names and buttons. **No passwords** |
 | `src/relay.py` | The relay: UDP in, parsing, website, database writer |
 | `src/f1_format.py` | F1 22 packet formats and names (tracks, session types...) |

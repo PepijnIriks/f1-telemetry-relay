@@ -1,45 +1,26 @@
 """
-Exports all tables from the F1 database to CSV files.
+Exports all tables from the F1 database (Azure) to CSV files.
 
-Usage (in the relay folder):
-    python export_csv.py                 -> all tables
-    python export_csv.py f1_laps         -> only the given table(s)
+Usage: double-click export.bat, or in the relay folder:
+    .venv\\Scripts\\python.exe export_csv.py                 -> all tables
+    .venv\\Scripts\\python.exe export_csv.py f1_laps         -> only the given table(s)
 
-The database login is read from Azure Key Vault (KEYVAULT_NAME in config/config.env),
-exactly like the relay does. No username or password is stored in this file.
-Output goes to the folder 'exports' next to this script.
+- The database login comes from Azure Key Vault (like the relay); no username or password in this file.
+- This computer's IP is put in the Azure firewall, and a stopped database is started first (2-5 minutes).
+- Every export gets its own folder: exports/2026-10-15_1116/ with one CSV per table and a summary.
+- Tables of the earlier collector are TimescaleDB "hypertables": their rows live in hidden chunk tables,
+  so every table is exported with COPY (SELECT * FROM table), which includes all chunks.
 """
+import json
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-OUT_DIR = HERE / "exports"
 sys.path.insert(0, str(HERE / "src"))
+import azure_firewall  # noqa: E402
 import secrets_store  # noqa: E402
-
-
-def read_env(path):
-    env = {}
-    if not path.exists():
-        return env
-    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        env[k.strip()] = v.strip().strip('"').strip("'")
-    return env
-
-
-def connection_params():
-    url, where, err = secrets_store.database_url(read_env(HERE / "config" / "config.env"))
-    if not url:
-        sys.exit(f"No database login: {err}")
-    print(f"Login read from {where}")
-    import azure_firewall
-    azure_firewall.ensure(read_env(HERE / "config" / "config.env"))   # this computer's IP in the Azure firewall
-    return {"dsn": url}
-
 
 LIST_TABLES = """
     SELECT table_name FROM information_schema.tables
@@ -48,89 +29,94 @@ LIST_TABLES = """
 """
 
 
-def export_sync(conn, tables, copy_fn):
-    cur = conn.cursor()
-    cur.execute(LIST_TABLES)
-    all_tables = [r[0] for r in cur.fetchall()]
-    targets = tables or all_tables
-    missing = [t for t in targets if t not in all_tables]
-    if missing:
-        print("Does not exist:", ", ".join(missing))
-        print("Available:", ", ".join(all_tables))
-        targets = [t for t in targets if t in all_tables]
-    for t in targets:
-        out = OUT_DIR / f"{t}.csv"
-        with open(out, "wb") as f:
-            copy_fn(cur, t, f)
-        print(f"  {t:<30} -> {out.name}  ({out.stat().st_size / 1024:.0f} KB)")
-
-
-def run_psycopg3(params, tables):
-    import psycopg
-    kw = {"conninfo": params["dsn"]} if "dsn" in params else {**params, "sslmode": "require"}
-    with psycopg.connect(**kw) as conn:
-        def copy(cur, t, f):
-            with cur.copy(f'COPY "{t}" TO STDOUT WITH CSV HEADER') as cp:
-                for chunk in cp:
-                    f.write(chunk)
-        export_sync(conn, tables, copy)
-
-
-def run_psycopg2(params, tables):
-    import psycopg2
-    conn = psycopg2.connect(params["dsn"]) if "dsn" in params else psycopg2.connect(**params, sslmode="require")
+def database_on(cfg):
+    """Starts the Azure database when it is stopped and waits until it is ready.
+    Returns (server, resource group, subscription) when THIS script started it (so it can turn it off again)."""
     try:
-        def copy(cur, t, f):
-            cur.copy_expert(f'COPY "{t}" TO STDOUT WITH CSV HEADER', f)
-        export_sync(conn, tables, copy)
-    finally:
-        conn.close()
-
-
-def run_asyncpg(params, tables):
-    import asyncio
-    import asyncpg
-
-    async def main():
-        if "dsn" in params:
-            conn = await asyncpg.connect(params["dsn"], ssl="require")
-        else:
-            conn = await asyncpg.connect(host=params["host"], port=int(params["port"]), user=params["user"],
-                                         password=params["password"], database=params["dbname"], ssl="require")
-        try:
-            all_tables = [r[0] for r in await conn.fetch(LIST_TABLES)]
-            targets = tables or all_tables
-            for t in targets:
-                if t not in all_tables:
-                    print(f"Does not exist: {t}")
-                    continue
-                out = OUT_DIR / f"{t}.csv"
-                await conn.copy_from_table(t, output=str(out), format="csv", header=True)
-                print(f"  {t:<30} -> {out.name}  ({out.stat().st_size / 1024:.0f} KB)")
-        finally:
-            await conn.close()
-
-    asyncio.run(main())
+        server, rg, sub, state = azure_firewall.find_server(cfg)
+    except Exception as e:
+        print(f"Could not check the database state ({e}); trying to connect anyway")
+        return None
+    if state == "Ready":
+        return None
+    started = (server, rg, sub) if state == "Stopped" else None
+    print(f"Database {server} is {state}. Starting it (usually 2 to 5 minutes)...")
+    if state == "Stopped":
+        secrets_store.az(["postgres", "flexible-server", "start", "--resource-group", rg, "--name", server,
+                          "--subscription", sub, "--no-wait"], timeout=120)
+    for _ in range(80):                       # at most ~13 minutes
+        time.sleep(10)
+        rc, out, _err = secrets_store.az(["postgres", "flexible-server", "show", "--resource-group", rg,
+                                          "--name", server, "--subscription", sub, "--query", "state",
+                                          "-o", "tsv"])
+        state = out.strip() if rc == 0 else state
+        print(f"  status: {state}")
+        if state == "Ready":
+            return started
+    print("The database did not become ready in time; trying to connect anyway")
+    return started
 
 
 def main():
-    tables = sys.argv[1:]
-    OUT_DIR.mkdir(exist_ok=True)
-    params = connection_params()
-    print("Connecting ...")
+    wanted = sys.argv[1:]
+    cfg = azure_firewall.read_cfg()
+    url, where, err = secrets_store.database_url(cfg)
+    if not url:
+        sys.exit(f"No database login: {err}")
+    print(f"Login read from {where}")
+    started = database_on(cfg)
+    azure_firewall.ensure(cfg)
 
-    for name, runner in (("psycopg", run_psycopg3), ("psycopg2", run_psycopg2), ("asyncpg", run_asyncpg)):
+    import psycopg2
+    out_dir = HERE / "exports" / time.strftime("%Y-%m-%d_%H%M")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    print("Connecting...")
+    conn = None
+    for attempt in range(6):                  # right after starting, the firewall/database can need a moment
         try:
-            __import__(name)
-        except ImportError:
-            continue
-        runner(params, tables)
-        print(f"\nKlaar. Bestanden staan in: {OUT_DIR}")
-        return
+            conn = psycopg2.connect(url, connect_timeout=20)
+            break
+        except Exception as e:
+            print(f"  not reachable yet ({str(e).strip()[:120]}), retrying in 20 s...")
+            time.sleep(20)
+    if conn is None:
+        sys.exit("Could not connect to the database.")
 
-    print("Geen PostgreSQL-driver gevonden. Installeer er een met:")
-    print("    python -m pip install psycopg2-binary")
-    sys.exit(1)
+    summary, t_start = {}, time.time()
+    with conn, conn.cursor() as cur:
+        cur.execute(LIST_TABLES)
+        tables = [r[0] for r in cur.fetchall()]
+        targets = [t for t in tables if not wanted or t in wanted]
+        for t in wanted:
+            if t not in tables:
+                print(f"Does not exist: {t}")
+        print(f"Exporting {len(targets)} table(s) to {out_dir}\n")
+        for t in targets:
+            t0 = time.time()
+            path = out_dir / f"{t}.csv"
+            with open(path, "wb") as f:
+                cur.copy_expert(f'COPY (SELECT * FROM public."{t}") TO STDOUT WITH CSV HEADER', f)
+            size = path.stat().st_size
+            rows = max(0, sum(1 for _ in open(path, "rb")) - 1) if size < 50 * 1024 ** 2 else None
+            summary[t] = {"bytes": size, "rows": rows}
+            label = f"{rows:,} rows" if rows is not None else "large file"
+            print(f"  {t:<34} {size / 1024 ** 2:9.1f} MB   {label:<16} ({time.time() - t0:.0f} s)")
+    conn.close()
+    (out_dir / "export_summary.json").write_text(json.dumps(
+        {"exported_at": time.strftime("%Y-%m-%d %H:%M:%S"), "tables": summary}, indent=2), encoding="utf-8")
+    total = sum(v["bytes"] for v in summary.values())
+    print(f"\nDone in {time.time() - t_start:.0f} s: {len(summary)} tables, {total / 1024 ** 2:.0f} MB in total.")
+    print(f"Folder: {out_dir}")
+    if started:                                   # it was off before the export: turn it off again (saves costs)
+        server, rg, sub = started
+        print(f"Turning database {server} off again (it was off before the export).")
+        secrets_store.az(["postgres", "flexible-server", "stop", "--resource-group", rg, "--name", server,
+                          "--subscription", sub, "--no-wait"], timeout=120)
+    if sys.platform == "win32":
+        try:
+            subprocess.Popen(["explorer", str(out_dir)])
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
