@@ -53,7 +53,7 @@ The live view never waits for the database: packets go to the browser right away
 3. In F1 22 set UDP telemetry to IP `127.0.0.1`, port `20777`, format `2022`.
 4. Drive. The dashboard opens at http://127.0.0.1:8000.
 
-No game at hand? `start.bat simulate` sends realistic fake data.
+No game at hand? Double-click **`demo.bat`**: a fake game drives laps and everything works, but nothing is stored.
 
 | Leaderboard | Mini-sectors and ghost |
 |---|---|
@@ -77,7 +77,8 @@ No game at hand? `start.bat simulate` sends realistic fake data.
 
 ## Starting
 - Windows: double-click `start.bat`
-- Fake data without the game (demo): `start.bat simulate`
+- **Demo without the game: double-click `demo.bat`** (fake data, nothing is written to the database)
+- Fake data that *is* stored (testing): `start.bat simulate`
 - What is already in the database: double-click `inspect-db.bat`
 - Set up / change the database login in Key Vault: double-click `setup-keyvault.bat`
 
@@ -88,6 +89,7 @@ The website opens automatically at http://127.0.0.1:8000 (tabs: `#live`, `#raw`,
 | Folder / file | What |
 |---|---|
 | `start.bat` | Start everything in one go |
+| `demo.bat` | Demo with a fake game; nothing is stored |
 | `inspect-db.bat` | Shows all tables and row counts in the Azure database |
 | `setup-keyvault.bat` | Once: puts the database login in Azure Key Vault |
 | `export_csv.py` | Exports all database tables to CSV (`python export_csv.py`) |

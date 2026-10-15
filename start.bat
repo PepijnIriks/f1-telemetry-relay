@@ -26,9 +26,8 @@ REM no permission or no secret yet), run the Key Vault setup first.
 python src\secrets_store.py --check
 if errorlevel 1 python src\setup_keyvault.py
 
-REM Optional: "start.bat simulate" sends fake data so you can show everything works without the game
+REM Optional: "start.bat simulate" sends fake data that IS stored (for testing). For a demo use demo.bat.
 if /i "%1"=="simulate" start "F1 simulation" cmd /k python src\simulate.py
-if /i "%1"=="simulatie" start "F1 simulation" cmd /k python src\simulate.py
 
 REM The small "F1 driver" window (click a name to change driver). Turn off with DRIVER_MENU=0
 findstr /r /c:"^DRIVER_MENU=0" config\config.env >nul 2>nul

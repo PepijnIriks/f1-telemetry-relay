@@ -90,6 +90,7 @@
   header .who button { padding:3px 10px; }
   .dbmsg { margin:12px 20px 0; padding:8px 12px; border-left:3px solid var(--amber); background:var(--panel); color:var(--amber); font-size:13px; }
   .dbmsg.err { border-left-color:var(--red); color:#e68a86; }
+  .dbmsg.demo { border-left-color:var(--accent); background:#2a1f30; color:var(--text); }
 
   /* layout */
   .tab { display:none; padding:14px 20px 48px; } .tab.on { display:block; }
@@ -917,7 +918,8 @@ function onStats(s) {
   if (db.size_gb != null) $("dbsize").textContent = `${db.size_gb.toFixed(1)} GB`;
   const dbled = $("dbdot"); dbled.classList.toggle("on", !!db.connected); dbled.classList.toggle("warn", db.enabled && !db.connected && !db.error);
   $("dbtxt").textContent = !db.enabled ? "database not linked" : db.error ? "database error" : db.connected ? "database OK" : "database connecting...";
-  if (db.error) $("dbmsg").innerHTML = `<div class="dbmsg err">Database error: ${esc(db.error)}. The relay keeps retrying; no data is lost.</div>`;
+  if (s.demo) $("dbmsg").innerHTML = `<div class="dbmsg demo"><b>DEMO MODE</b> · fake data from the simulator, nothing is stored in the database. Races and Leaderboard show the real stored data.</div>`;
+  else if (db.error) $("dbmsg").innerHTML = `<div class="dbmsg err">Database error: ${esc(db.error)}. The relay keeps retrying; no data is lost.</div>`;
   else if (!db.enabled) $("dbmsg").innerHTML = `<div class="dbmsg">${esc(db.hint || "Database not linked")}. Live and Raw still work, but nothing is stored and the Races tab stays empty.</div>`;
   else if (db.warning) $("dbmsg").innerHTML = `<div class="dbmsg err">${esc(db.warning)}</div>`;
   else $("dbmsg").innerHTML = "";

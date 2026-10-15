@@ -49,6 +49,9 @@ def load_config():
 
 
 CFG = load_config()
+# Demo mode (demo.bat): fake data from the simulator is shown everywhere, but NOTHING is written to Azure,
+# so demos never end up in the real data. Reading (Races, Leaderboard) still works.
+DEMO = "--demo" in sys.argv
 
 state = {
     "driver": "", "player": 0, "started": time.time(), "total": 0, "bytes": 0, "by_type": {},
@@ -567,13 +570,15 @@ def write_batch(cur, b):
 
 
 def drain_queue():
-    """Moves everything from the UDP thread's queue into `pending`."""
+    """Moves everything from the UDP thread's queue into `pending` (in demo mode: throws it away)."""
     with pending_lock:
         while True:
             try:
                 msg = db_queue.get_nowait()
             except queue.Empty:
                 return
+            if DEMO:
+                continue
             kind = msg[0]
             if kind == "pkt":
                 pending["pkts"].append(msg[1])
@@ -634,7 +639,8 @@ def db_worker():
         if key != last_report:
             last_report = key
             if ok:
-                print(f"[DB] Connected to {db_host()} - tables ready, data is being stored")
+                print(f"[DB] Connected to {db_host()} - " + ("DEMO MODE: only reading, nothing is stored" if DEMO
+                                                             else "tables ready, data is being stored"))
             else:
                 print(f"[DB] ERROR at {db_host()}: {err}")
                 print("[DB] The relay keeps retrying; data waits on this PC meanwhile, nothing is lost.")
@@ -714,7 +720,7 @@ def db_worker():
                 print(f"[DB] Loading the reference lap failed: {friendly_db_error(e)}", flush=True)
 
         # Status row for the other group (f1_status), every minute
-        if conn and now - last_status >= 60:
+        if conn and not DEMO and now - last_status >= 60:
             last_status = now
             try:
                 with conn, conn.cursor() as cur:
@@ -1580,7 +1586,7 @@ async def broadcaster():
                          "by_type": {PACKET_NAMES.get(k, str(k)): v
                                      for k, v in sorted(state["by_type"].items())},
                          "uptime": now - state["started"], "driver": state["driver"],
-                         "drivers": DRIVERS.names,
+                         "drivers": DRIVERS.names, "demo": DEMO,
                          "db": state["db"], "now": now})
         for m in msgs:
             text = json.dumps(m)
@@ -1636,6 +1642,8 @@ async def main():
     print(f" Drivers:     {DRIVERS.numbered() or '(none yet: add names on the website)'}")
     print("              change driver: website, the 'F1 driver' window, or type a number here + Enter")
     print(f" Driver:      {state['driver'] or '(empty)'}")
+    if DEMO:
+        print(" DEMO MODE:   fake data from the simulator, NOTHING is written to the database")
     print("=" * 62)
     if "--no-browser" not in sys.argv:
         webbrowser.open(f"http://127.0.0.1:{http_port}/")
