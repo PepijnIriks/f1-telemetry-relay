@@ -16,7 +16,7 @@ from driver_runs import switch_driver
 from f1_format import COMPOUNDS, DAMAGE_STRUCT, LAP_STRUCT, PACKET_NAMES, SESSION_TYPES, STATUS_STRUCT, TEL_STRUCT, TRACKS
 from legacy import legacy, legacy_due, legacy_lap_list, legacy_replay, refresh_legacy
 from run_tools import build_download, load_compare, load_trace, sample_sql, summarise_run
-from shared import (CFG, DEMO, DRIVERS, POWER, ROOT, RUN_FILTER, clients, db_queue, events, events_dirty, grid_dirty,
+from shared import (CFG, DEMO, DRIVERS, POWER, ROOT, clients, db_queue, events, events_dirty, grid_dirty,
                     grid_state, live, live_buffer, live_dirty, sess, state)
 
 
@@ -167,7 +167,10 @@ async def api_tyres(request):
 
 # ----------------------------------------------------------------- Run: change driver / download
 async def api_run_driver(request):
-    """Change the driver name of a stored run (e.g. someone forgot to switch). No data is removed."""
+    """Change the driver name of a stored run (e.g. someone forgot to switch). No data is removed.
+    Only f1_sessions changes: that is where the driver of a run is looked up. The raw packets are NOT rewritten
+    (that would make PostgreSQL copy every packet of the run, so the table would grow by the size of the run,
+    and compressed packets can't be changed cheaply). Their `driver` column keeps the name at recording time."""
     bad = db_unavailable()
     if bad:
         return bad
@@ -182,9 +185,6 @@ async def api_run_driver(request):
         try:
             with conn, conn.cursor() as cur:
                 cur.execute("UPDATE f1_sessions SET driver = %s WHERE run_id = %s", (name, uid))
-                if cur.rowcount == 0:
-                    return 0
-                cur.execute(f"UPDATE f1_telemetry_raw SET driver = %s WHERE {RUN_FILTER}", (name, uid, uid))
                 return cur.rowcount
         finally:
             conn.close()
@@ -192,9 +192,11 @@ async def api_run_driver(request):
         n = await asyncio.get_running_loop().run_in_executor(None, work)
     except Exception as e:
         return web.json_response({"error": friendly_db_error(e)})
+    if not n:
+        return web.json_response({"error": "Run not found"})
     if uid in sess:
         sess[uid]["driver"] = name
-    print(f"[DRIVER] Run {uid} now belongs to {name} ({n:,} packets updated)", flush=True)
+    print(f"[DRIVER] Run {uid} now belongs to {name}", flush=True)
     return web.json_response({"ok": True, "driver": name})
 
 
