@@ -4,8 +4,8 @@ to add yourself by hand in the Azure portal.
 
 - Every computer gets its own rule: "relay-<computer name>". When your IP changes (other wifi,
   at school, at home) the rule is updated to the new IP. Other computers' rules are not touched.
-- Used automatically by start.bat (relay), inspect-db.bat and export_csv.py.
-- install-firewall-task.bat adds a Windows scheduled task that runs this every 15 minutes in the
+- Used automatically by start.bat (relay) and the database tools in tools.bat.
+- tools.bat > "Firewall check every 15 minutes" adds a Windows scheduled task that runs this in the
   background, so the computer also has access when you only use other tools (pgAdmin, DBeaver...).
 
 Run by hand:  .venv\\Scripts\\python.exe src\\azure_firewall.py
@@ -22,22 +22,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import secrets_store as ss  # noqa: E402
+from paths import FIREWALL_LOG as LOG, read_config  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
-LOG = ROOT / "firewall.log"
 SUFFIX = ".postgres.database.azure.com"
 
 
 def read_cfg():
-    cfg = {}
-    path = ROOT / "config" / "config.env"
-    if path.exists():
-        for line in path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                cfg[k.strip()] = v.strip().strip('"')
-    return cfg
+    return read_config()
 
 
 def rule_name():
@@ -143,6 +134,7 @@ def log(msg):
     try:
         lines = LOG.read_text(encoding="utf-8").splitlines()[-200:] if LOG.exists() else []
         lines.append(f"{time.strftime('%Y-%m-%d %H:%M:%S')}  {msg}")
+        LOG.parent.mkdir(parents=True, exist_ok=True)
         LOG.write_text("\n".join(lines) + "\n", encoding="utf-8")
     except OSError:
         pass

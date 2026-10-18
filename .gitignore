@@ -1,24 +1,23 @@
-# Python
+# Made on each computer itself - never on GitHub
 .venv/
+data/
 __pycache__/
 *.pyc
 
-# Data and caches (never to GitHub)
-exports/
-config/old_races_cache.json
-*.csv
-
-# Secrets: never commit these (the login lives in Azure Key Vault)
+# Local settings and secrets (the database login lives in Azure Key Vault)
+config/drivers.json
 *.local.env
 .env
 secrets*.txt
-config/drivers.json
-firewall.log
-zips/
-spool/
-downloads/
-config/trackmaps.json
 
-# One-time GitHub link script that may sit next to the project before it is in the repo
+# Places older versions used (start.bat moves their contents into data/)
+spool/
+exports/
+downloads/
+zips/
+firewall.log
+config/trackmaps.json
+config/old_races_cache.json
+*.csv
 github-setup.bat
 .git-setup/

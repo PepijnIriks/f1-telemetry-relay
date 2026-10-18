@@ -2,7 +2,7 @@
 Safety net so NO data is ever lost.
 
 Everything that is not in Azure yet (database off or starting, no internet, relay closed) is written to
-the folder "spool" on this PC. As soon as the database can be reached again, the relay sends those files
+the folder data/spool on this PC. As soon as the database can be reached again, the relay sends those files
 to Azure (oldest first) and only removes a file after Azure has confirmed it is stored.
 This also works after a restart: files left behind are sent the next time the relay connects.
 """
@@ -10,9 +10,10 @@ import os
 import pickle
 import threading
 import time
-from pathlib import Path
 
-DIR = Path(__file__).resolve().parent.parent / "spool"
+from paths import SPOOL
+
+DIR = SPOOL
 _lock = threading.Lock()
 
 
@@ -37,7 +38,7 @@ def save(b):
     if is_empty(b):
         return None
     with _lock:
-        DIR.mkdir(exist_ok=True)
+        DIR.mkdir(parents=True, exist_ok=True)
         name = f"{time.time_ns()}-{len(b['pkts'])}.pkl"
         tmp = DIR / (name + ".tmp")
         with open(tmp, "wb") as f:

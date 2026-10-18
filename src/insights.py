@@ -7,12 +7,12 @@ import json
 import statistics
 import struct
 import time
-from pathlib import Path
 
 from f1_format import TRACKS, COMPOUNDS, SESSION_TYPES
 
-ROOT = Path(__file__).resolve().parent.parent
-TRACKMAP_FILE = ROOT / "config" / "trackmaps.json"
+from paths import CACHE
+
+TRACKMAP_FILE = CACHE / "trackmaps.json"
 RUN_FILTER = "(run_id = %s OR (run_id IS NULL AND session_uid = %s))"
 
 
@@ -218,6 +218,7 @@ def track_map(cur, track_id):
         pts = [[k * 8 + 4, round(s[0] / s[2], 1), round(s[1] / s[2], 1)] for k, s in sorted(bins.items())]
         maps[str(track_id)] = pts
         try:
+            TRACKMAP_FILE.parent.mkdir(parents=True, exist_ok=True)
             TRACKMAP_FILE.write_text(json.dumps(maps), encoding="utf-8")
         except OSError:
             pass

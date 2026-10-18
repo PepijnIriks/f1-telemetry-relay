@@ -1,13 +1,13 @@
 """
 Exports all tables from the F1 database (Azure) to CSV files.
 
-Usage: double-click export.bat, or in the relay folder:
-    .venv\\Scripts\\python.exe export_csv.py                 -> all tables
-    .venv\\Scripts\\python.exe export_csv.py f1_laps         -> only the given table(s)
+Usage: tools.bat > "Export the database to CSV", or in the relay folder:
+    .venv\\Scripts\\python.exe src\\export_csv.py              -> all tables
+    .venv\\Scripts\\python.exe src\\export_csv.py f1_laps      -> only the given table(s)
 
 - The database login comes from Azure Key Vault (like the relay); no username or password in this file.
 - This computer's IP is put in the Azure firewall, and a stopped database is started first (2-5 minutes).
-- Every export gets its own folder: exports/2026-10-15_1116/ with one CSV per table and a summary.
+- Every export gets its own folder: data/exports/2026-10-15_1116/ with one CSV per table and a summary.
 - Tables of the earlier collector are TimescaleDB "hypertables": their rows live in hidden chunk tables,
   so every table is exported with COPY (SELECT * FROM table), which includes all chunks.
 """
@@ -17,10 +17,10 @@ import sys
 import time
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import azure_firewall  # noqa: E402
 import secrets_store  # noqa: E402
+from paths import EXPORTS  # noqa: E402
 
 LIST_TABLES = """
     SELECT table_name FROM information_schema.tables
@@ -68,7 +68,7 @@ def main():
     azure_firewall.ensure(cfg)
 
     import psycopg2
-    out_dir = HERE / "exports" / time.strftime("%Y-%m-%d_%H%M")
+    out_dir = EXPORTS / time.strftime("%Y-%m-%d_%H%M")
     out_dir.mkdir(parents=True, exist_ok=True)
     print("Connecting...")
     conn = None

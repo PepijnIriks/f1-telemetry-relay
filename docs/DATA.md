@@ -7,7 +7,7 @@ All tables are in the `public` schema of the Azure PostgreSQL database and start
 
 | What | How |
 |---|---|
-| Account | `f1_reader`, **read only** (can never change or delete anything). Ask Pepijn to run `create-readonly-user.bat`; the login is in Azure Key Vault **F1Vault**, secret `f1-readonly-url` |
+| Account | `f1_reader`, **read only** (can never change or delete anything). Ask Pepijn to run `tools.bat` > 7; the login is in Azure Key Vault **F1Vault**, secret `f1-readonly-url` |
 | Firewall | Your public IP must be allowed on the server: send it to Pepijn, or get the role to add a rule yourself (Azure portal > the server > Networking) |
 | Database on? | To save money the server is **off when nobody races** (it turns on when someone races). Check `f1_status` (below) or ask before you start working |
 | Connection | `sslmode=require`, port 5432, database `postgres` |

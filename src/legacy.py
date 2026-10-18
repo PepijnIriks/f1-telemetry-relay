@@ -8,7 +8,8 @@ import time
 
 from db import friendly_db_error, query, query_batch
 from f1_format import SESSION_TYPES, TRACKS
-from shared import CFG, ROOT, state
+from paths import CACHE
+from shared import CFG, state
 
 
 LEGACY = "f22_"   # tables of the earlier collector (read only)
@@ -72,7 +73,7 @@ async def legacy_sessions():
     return out
 
 
-LEGACY_FILE = ROOT / "config" / "old_races_cache.json"
+LEGACY_FILE = CACHE / "old_races_cache.json"
 LEGACY_MAX_AGE = 30 * 60          # refresh the list of old races at most every 30 minutes
 legacy = {"rows": None, "at": 0.0, "loading": False, "error": ""}
 try:
@@ -93,6 +94,7 @@ async def refresh_legacy():
         rows = await legacy_sessions()
         legacy.update(rows=rows, at=time.time(), error="")
         try:
+            LEGACY_FILE.parent.mkdir(parents=True, exist_ok=True)
             LEGACY_FILE.write_text(json.dumps({"at": legacy["at"], "rows": rows}), encoding="utf-8")
         except Exception:
             pass

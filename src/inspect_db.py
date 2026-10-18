@@ -1,23 +1,15 @@
 """
 Shows what is in the Azure database: all tables, columns and row counts.
-Usage: double-click inspect-db.bat (reads the database login from Azure Key Vault, see config/config.env)
+Usage: tools.bat > "What is in the database" (reads the database login from Azure Key Vault)
 """
 import sys
-from pathlib import Path
 
 import psycopg2
 
 import secrets_store
+from paths import read_config
 
-ROOT = Path(__file__).resolve().parent.parent
-cfg = {}
-path = ROOT / "config" / "config.env"
-if path.exists():
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, v = line.split("=", 1)
-            cfg[k.strip()] = v.strip().strip('"')
+cfg = read_config()
 url, where, err = secrets_store.database_url(cfg)
 if not url:
     sys.exit(f"No database login: {err}")

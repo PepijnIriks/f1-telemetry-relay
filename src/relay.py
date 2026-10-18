@@ -19,6 +19,7 @@ import webbrowser
 from aiohttp import web
 
 import intro
+import paths
 from db import db_host, db_worker, load_database_url, pending, spool_everything
 from driver_runs import console_menu
 from shared import CFG, DEMO, DRIVERS, POWER, ROOT, db_queue, loop_ref, state
@@ -61,6 +62,7 @@ async def main():
 
 
 if __name__ == "__main__":
+    paths.tidy()                      # files of older versions -> data/ (also data waiting for Azure)
     if intro.wanted(CFG, sys.argv):
         intro.play()
     load_database_url()

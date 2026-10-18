@@ -1,6 +1,6 @@
 """
 How much space the raw packets take, and whether they are stored compressed (TimescaleDB).
-Used by the relay (storage line every 10 minutes) and by upgrade-db.bat.
+Used by the relay (storage line every 10 minutes) and by the database compression (db_upgrade.py).
 """
 RAW = "f1_telemetry_raw"
 
