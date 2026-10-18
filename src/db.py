@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 import insights
 import secrets_store
 import spool
+import storage
 from f1_format import TRACKS
 from schema import CORNER_INSERT, DDL, TRACE_INSERT
 from shared import CFG, DEMO, POWER, db_queue, fmt_ms, live, records, ref_wanted, refs, state
@@ -77,10 +78,16 @@ def storage_check(conn):
     gb = 1024 ** 3
     warn_gb = float(CFG.get("DB_WARN_GB", "50") or 0)
     with conn, conn.cursor() as cur:
-        cur.execute("SELECT pg_database_size(current_database()), pg_total_relation_size('f1_telemetry_raw')")
-        db_size, raw_size = cur.fetchone()
+        cur.execute("SELECT pg_database_size(current_database())")
+        db_size = cur.fetchone()[0]
+        raw = storage.raw_info(cur)
+        can_compress = not raw["hypertable"] and storage.timescale_available(cur)
     state["db"]["size_gb"] = round(db_size / gb, 2)
-    print(f"[DB] Storage: database {db_size / gb:.1f} GB in total (raw packets {raw_size / gb:.1f} GB)", flush=True)
+    state["db"]["raw_compressed"] = raw["hypertable"] and raw["compressed"]
+    print(f"[DB] Storage: database {db_size / gb:.1f} GB in total ({storage.describe(raw)})", flush=True)
+    if can_compress and raw["size"] > gb:
+        print("[DB] Tip: the raw packets are not compressed yet. Close the relay and double-click upgrade-db.bat "
+              "once: the same data then takes much less space.", flush=True)
     if warn_gb > 0 and db_size > warn_gb * gb:
         msg = (f"Database is {db_size / gb:.1f} GB, above the warning level of {warn_gb:g} GB. Make the storage "
                "bigger in the Azure portal (f1db > Compute + storage) before it is full, or it becomes read-only.")
