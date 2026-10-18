@@ -24,6 +24,7 @@ REM ---- first time: link this folder to GitHub without touching your files
 if exist .git goto linked
 echo Linking this folder to GitHub (once)...
 if exist .git-setup rmdir /s /q .git-setup
+git config --global credential.helper manager
 git clone --quiet --no-checkout %REPO% .git-setup
 if errorlevel 1 goto nonet
 move .git-setup\.git .git >nul
@@ -87,7 +88,10 @@ pause
 exit /b 1
 
 :nonet
-echo Could not reach GitHub. Check the internet connection and try again.
+echo GitHub could not be reached, or GitHub did not accept the login.
+echo If it says "Invalid username or token": an old GitHub login is saved on this PC. Remove it with
+echo   cmdkey /delete:git:https://github.com
+echo and run this again: a browser window then opens to log in to GitHub.
 pause
 exit /b 1
 
