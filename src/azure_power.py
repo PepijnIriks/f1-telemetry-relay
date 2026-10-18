@@ -34,7 +34,7 @@ class AzurePower:
     def __init__(self, cfg, host, state):
         self.enabled = _yes(cfg.get("AZURE_AUTO_POWER", "1"))
         self.stop_on_exit = _yes(cfg.get("AZURE_STOP_ON_EXIT", "1"))
-        self.stop_after = float(cfg.get("AZURE_STOP_AFTER_MIN", "15")) * 60
+        self.stop_after = float(cfg.get("AZURE_STOP_AFTER_MIN", "10")) * 60
         self.cfg_server = cfg.get("AZURE_SERVER_NAME", "").strip()
         self.set_host(host)
         self.rg = cfg.get("AZURE_RESOURCE_GROUP", "").strip()

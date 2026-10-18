@@ -18,3 +18,7 @@ zips/
 spool/
 downloads/
 config/trackmaps.json
+
+# One-time GitHub link script that may sit next to the project before it is in the repo
+github-setup.bat
+.git-setup/

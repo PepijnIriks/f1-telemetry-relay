@@ -33,11 +33,15 @@ their own dashboard on the stored data.
 - **No passwords in the code** - the database login lives in Azure Key Vault
 - **Low cost** - the database turns itself on when someone races and off when nobody does; the PC's IP is
   kept in the database firewall automatically
+- **Compressed storage** - after `upgrade-db.bat` the raw packets are stored compressed per week (TimescaleDB):
+  all data is kept and readable with normal SQL, but it takes far less space
+- **Tested** - `test.bat` runs automated tests in seconds; GitHub runs them for every change
+- **Documented for the dashboard group** - [DATA.md](DATA.md) explains every table and column, with example queries
 
 ## How it works
 ```mermaid
 flowchart LR
-    G[F1 22 game] -- UDP 20777 --> R[relay.py]
+    G[F1 22 game] -- UDP 20777 --> R[relay]
     R -- WebSocket, live --> W[Website<br/>Live / Raw / Races]
     R -- batches, in the background --> DB[(Azure PostgreSQL)]
     R -. Azure down? .-> S[spool folder<br/>on this PC] -. later .-> DB
@@ -81,6 +85,9 @@ No game at hand? Double-click **`demo.bat`**: a fake game drives laps and everyt
 - Fake data that *is* stored (testing): `start.bat simulate`
 - What is already in the database: double-click `inspect-db.bat`
 - Set up / change the database login in Key Vault: double-click `setup-keyvault.bat`
+- Compress the stored data (once, relay closed): double-click `upgrade-db.bat`
+- Run the automated tests: double-click `test.bat`
+- Get the newest version from GitHub / put your changes on GitHub: double-click `github-sync.bat`
 
 On start you get a short start-lights animation (turn it off with `SHOW_INTRO=0` in `config/config.env`).
 The website opens automatically at http://127.0.0.1:8000 (tabs: `#live`, `#raw`, `#races`).
@@ -93,8 +100,22 @@ The website opens automatically at http://127.0.0.1:8000 (tabs: `#live`, `#raw`,
 | `inspect-db.bat` | Shows all tables and row counts in the Azure database |
 | `setup-keyvault.bat` | Once: puts the database login in Azure Key Vault |
 | `export.bat` | Exports every database table to CSV (folder `exports\<date_time>`), starts the database if needed |
+| `upgrade-db.bat` | Once: stores the raw packets compressed (all data kept), see "Compressed storage" |
+| `test.bat` | Runs the automated tests (folder `tests`) |
+| `github-sync.bat` | Gets the newest version from GitHub and puts your own changes on GitHub |
+| `DATA.md` | Guide to the database for the dashboard group: every table, column and example queries |
+| `CHANGELOG.md` | What changed in every version |
 | `config/config.env` | Settings: ports, name of the key vault, Azure on/off, driver names and buttons. **No passwords** |
-| `src/relay.py` | The relay: UDP in, parsing, website, database writer |
+| `src/relay.py` | Start of the relay (start.bat runs it); the work is done by the modules below |
+| `src/shared.py` | Settings from config.env and the state shared by the relay modules |
+| `src/telemetry.py` | UDP in: parses the game packets, completes laps, sectors and corners |
+| `src/driver_runs.py` | One run per driver, the driver menu in the black window |
+| `src/db.py` | Database login, tables, background writer, safety net, storage check, status row |
+| `src/website.py` | The website: pages, live WebSocket and the `/api/...` endpoints |
+| `src/run_tools.py` | Download zip, replay and the corner comparison of stored runs |
+| `src/legacy.py` | Races of the earlier collector (`f22_` tables) |
+| `src/storage.py` | How much space the raw packets take and whether they are compressed |
+| `src/db_upgrade.py` | Used by `upgrade-db.bat` |
 | `src/f1_format.py` | F1 22 packet formats and names (tracks, session types...) |
 | `src/corners.py` | Official F1 corners: corner times, speeds, braking points, lap traces |
 | `src/schema.py` | The database tables |
@@ -188,7 +209,7 @@ For a quick local test you can pass a connection string in the environment varia
 ## Database on/off and firewall (automatic)
 The relay manages the Azure database itself, so it doesn't use credit all day:
 - **On** when the relay starts (takes 2 to 5 minutes; data that already comes in is kept and written afterwards).
-- **Off** after `AZURE_STOP_AFTER_MIN` minutes (default 15) without racing and without anyone using the Races tab.
+- **Off** after `AZURE_STOP_AFTER_MIN` minutes (default 10) without racing and without anyone using the Races tab.
   It only turns back on when someone really races again (car driving on track), or when you click
   **Start database** in the Races tab. Game menus, a paused game or opening the website do not turn it on.
 - **Off** when you close the relay (close the window or Ctrl+C).
@@ -223,6 +244,34 @@ so they never clash with other tables in the same database:
 Runs stored before the driver-switch feature keep `run_id` = their `session_uid`; the relay adds the new
 columns itself on start (nothing to do by hand).
 
+Every table and column is explained in [DATA.md](DATA.md) (written for the group that builds the dashboard).
+
+## Compressed storage (upgrade-db.bat)
+The raw packets are by far the biggest part of the database. Double-click **`upgrade-db.bat`** once
+(relay closed) to store them compressed. **All data is kept** and stays readable with normal SQL, for the
+website, `export.bat` and the other group alike.
+
+How it works:
+1. The packets are copied in steps into a TimescaleDB table that is split per week. Weeks that are over and
+   7 days old are compressed; from then on that happens automatically.
+2. The copy is checked before anything is swapped: same number of packets, same number of bytes, same ids.
+3. Only then the tables are swapped (in one go). The old uncompressed table stays as `f1_telemetry_raw_old`
+   until you type `YES`, or later with `upgrade-db.bat --drop-old` (which checks again first).
+
+Safe to stop: close the window at any moment and start it again, it continues where it was. It pauses on its
+own before the database gets within 3 GB of its storage limit. `upgrade-db.bat --cancel` removes only a
+half-made copy, never your data.
+
+TimescaleDB must be switched on for the server (the earlier collector already used it). If it is not, the
+script says how (Azure portal > the server > Server parameters: tick `TIMESCALEDB` in `azure.extensions` and
+in `shared_preload_libraries`, save, the server restarts) and meanwhile offers a smaller clean-up: the big
+index on `session_uid` is replaced by a small one for only the old rows that have no `run_id`.
+It can also compress the `f22_` tables of the earlier collector.
+
+How much space it saves depends on the data: in a test with simulated races the raw packets became
+about 19x smaller; real game data varies more, so expect less. After the upgrade the black window shows the
+real number every 10 minutes (`[DB] Storage: ... compressed 6.2x (saves ... GB)`).
+
 ## Nothing gets lost
 Everything that is not in Azure yet (database off or still starting, no internet, relay closed) is written
 to the folder `spool` on this PC. As soon as the database can be reached again, the relay sends those files to
@@ -239,7 +288,8 @@ Want to watch on a phone or tablet? Set `WEB_HOST=0.0.0.0` in `config/config.env
 ## In the Races tab
 - **Download**: everything of one run as a zip: laps, corners, speed lines and every raw packet (CSV), for a
   backup outside Azure or to analyse in Excel/Python. A README in the zip explains the files.
-- **Change driver**: forgot to switch? Give the run the right name afterwards. Only the name changes.
+- **Change driver**: forgot to switch? Give the run the right name afterwards. Only the name in `f1_sessions`
+  changes (the stored packets are not rewritten, so it is instant and the database does not grow).
 
 ## Leaderboard, delta and records
 - **Leaderboard tab**: pick a track; per driver the fastest valid lap, best S1/S2/S3 (purple = fastest of all),
@@ -283,6 +333,8 @@ The Azure server is a Burstable B1ms with 64 GB storage and **storage autogrow o
 fixed and can't grow by itself. The things that matter:
 - **Database off when nobody races** (see "Database on/off"): compute is billed per hour only while it is on.
 - **Nothing is ever thrown away:** every packet is stored, so all data can be found later.
+- **Compressed:** after `upgrade-db.bat` the packets take far less space, so the 64 GB lasts much longer and
+  the storage never has to be made bigger (which costs extra every month and can never be undone).
 - **Warning before it is full:** a full database becomes read-only. When the database passes `DB_WARN_GB`
   (default 50 of the 64 GB), the black window and the website show a warning, so you can make the storage
   bigger in the Azure portal in time (f1db > Compute + storage; storage can only grow, never shrink).
@@ -295,6 +347,24 @@ The relay reads (read only) the tables `f22_car_telemetry`, `f22_lap_data`, `f22
 - The track map draws itself during the first lap and is remembered per track in the browser.
 - Standings and events are only available live, not in a replay.
 
-## GitHub
+## Tests
+Double-click **`test.bat`**: about 20 automated tests run in a few seconds, without the game and without
+Azure. They send a recorded (simulated) race through the relay and check that every packet is passed on
+unchanged, that laps, sectors, corners and lap traces come out right, that a driver switch starts a new run,
+and the calculations (consistency, pit advice, corner comparison) and the safety net on disk.
+Database tests (including the whole compression upgrade) run when `TEST_DATABASE_URL` points to a local,
+empty test database; on GitHub they always run, against a throw-away database.
+
+## GitHub and versions
 The code is on https://github.com/PepijnIriks/f1-telemetry-relay. `.venv`, `exports` and caches are never
 committed (`.gitignore`), and there are no passwords in any file, so the repo is safe to share with the group.
+
+- **`github-sync.bat`** keeps this folder and GitHub the same: it gets the newest version, and when you changed
+  something here it shows what and asks for a short description before putting it on GitHub. The first time it
+  links the folder to GitHub (your files are not touched). Needs Git once: `winget install -e --id Git.Git`.
+- **See what changed:** on GitHub, *Commits* shows every change with its description; click one to see the
+  changed lines (green = added, red = removed). Bigger changes come as a **pull request**: the tab
+  *Files changed* shows everything, and nothing reaches `main` until someone clicks *Merge*.
+- **Tests on GitHub:** every push and pull request runs the tests; a green check means they all passed.
+- **Versions:** [CHANGELOG.md](CHANGELOG.md) says per version what changed. The branch `v1.0-start` keeps the
+  version from before v1.1, so you can always go back to it.
