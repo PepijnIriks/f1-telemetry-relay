@@ -21,15 +21,23 @@ git config --global user.name "%GITNAME%"
 if defined GITMAIL git config --global user.email "%GITMAIL%"
 
 REM ---- first time: link this folder to GitHub without touching your files
-if exist .git goto linked
+REM (git init + fetch + reset: only the hidden .git folder is created, no file in this folder is changed)
+if not exist .git goto setup
+git rev-parse --verify --quiet HEAD >nul 2>nul
+if errorlevel 1 goto setup_fetch
+goto linked
+:setup
 echo Linking this folder to GitHub (once)...
-if exist .git-setup rmdir /s /q .git-setup
 git config --global credential.helper manager
-git clone --quiet --no-checkout %REPO% .git-setup
+git init --quiet -b main
+if errorlevel 1 goto nogit
+git remote add origin %REPO%
+:setup_fetch
+git fetch --quiet origin
 if errorlevel 1 goto nonet
-move .git-setup\.git .git >nul
-rmdir /s /q .git-setup
-git reset --quiet
+git reset --quiet origin/main
+if errorlevel 1 goto nonet
+git branch --quiet --set-upstream-to=origin/main main
 echo Linked. Your files were not changed.
 :linked
 
