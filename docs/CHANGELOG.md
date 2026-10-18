@@ -2,6 +2,25 @@
 
 What changed in each version, in plain words. The details of every change are in the commits on GitHub.
 
+## v1.2 - October 2026
+
+### Tidier folder, easy to put on another computer
+- **Three things to double-click** instead of twelve: `start.bat` (relay), `demo.bat` (demo without the game)
+  and `tools.bat`, one menu for everything else (database info, CSV export, compression, Key Vault setup,
+  read-only account, firewall check, tests, GitHub sync). The separate `.bat` files are gone.
+- **New computer = unzip and double-click `start.bat`:** it offers to install Python and the Azure CLI when
+  they are missing, makes the Python environment again when it is missing or was copied from another
+  computer, and installs new packages after an update by itself. No code has to be changed for the game PC.
+- **Everything a computer makes itself goes into `data/`** (data waiting for Azure, exports, download zips,
+  caches, `firewall.log`; also the old `zips` folder). `start.bat` moves these from the places older versions
+  used, the data waiting for Azure included.
+- Documentation in `docs/`: a short README, the [guide](GUIDE.md) with all details, [DATA.md](DATA.md),
+  this changelog and the screenshots.
+- `export_csv.py` moved into `src/`. All modules read `config/config.env` through one helper (`src/paths.py`).
+- Removed: `start.sh` (Linux/Mac; the project runs on Windows) and `src/driver_select.py` (driver choice with
+  buttons on the steering wheel; never used, the website and the driver window do this).
+- GitHub sync (`tools.bat` > 11) no longer puts changes on GitHub without a description.
+
 ## v1.1 - October 2026
 
 ### Database: less space, lower costs, nothing deleted
