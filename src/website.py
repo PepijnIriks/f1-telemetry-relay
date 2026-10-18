@@ -23,7 +23,7 @@ from shared import (CFG, DEMO, DRIVERS, POWER, ROOT, clients, db_queue, events, 
 def db_unavailable():
     if not CFG["DATABASE_URL"]:
         return web.json_response({"enabled": False,
-                                  "error": CFG["DB_SECRET_ERROR"] or "No database configured (run setup-keyvault.bat)"})
+                                  "error": CFG["DB_SECRET_ERROR"] or "No database configured (start.bat sets it up, or tools.bat > Key Vault setup)"})
     POWER.touch()      # someone is viewing Races: keeps a running database on (does not start a stopped one)
     if not POWER.db_ready():
         return web.json_response({"enabled": True, "error": POWER.not_ready_text(), "db_off": POWER.is_off()})

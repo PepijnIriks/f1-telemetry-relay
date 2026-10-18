@@ -6,26 +6,17 @@ database writer and the Azure on/off manager.
 import queue
 import sys
 import time
-from pathlib import Path
 
+import paths
 from azure_power import AzurePower
 from drivers import DriverList
 
-
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = paths.ROOT                  # the project folder (used by the other modules)
 
 
 def load_config():
-    cfg = {"UDP_PORT": "20777", "HTTP_PORT": "8000", "DATABASE_URL": "",
-           "DB_FLUSH_SECONDS": "2", "DB_SOURCE": "", "DB_SECRET_ERROR": ""}
-    path = ROOT / "config" / "config.env"
-    if path.exists():
-        for line in path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                cfg[k.strip()] = v.strip().strip('"')
-    return cfg
+    return paths.read_config({"UDP_PORT": "20777", "HTTP_PORT": "8000", "DATABASE_URL": "",
+                              "DB_FLUSH_SECONDS": "2", "DB_SOURCE": "", "DB_SECRET_ERROR": ""})
 
 
 CFG = load_config()

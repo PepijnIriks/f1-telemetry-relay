@@ -1,14 +1,14 @@
 """
 One-time database upgrade: keeps ALL data, but makes it take much less space.
 
-Usage: close the relay, then double-click upgrade-db.bat. It can be stopped (close the window) and started
+Usage: close the relay, then tools.bat > Compress the database. It can be stopped (close the window) and started
 again at any moment: it continues where it was.
 
 What it does:
 1. Compression (needs TimescaleDB on the server; the earlier collector already used it):
    the table with raw packets (f1_telemetry_raw) is copied, in small steps, into a TimescaleDB "hypertable"
    that is split per week. Weeks older than 7 days are compressed. All data stays in the database and can
-   be read with normal SQL, exactly like before (the website, export.bat and the other group see no difference).
+   be read with normal SQL, exactly like before (the website, the CSV export and the other group see no difference).
    Every step is checked: the copy must have exactly the same number of packets, the same total number of bytes
    and the same packet ids before the tables are swapped.
    The old, uncompressed table is kept as f1_telemetry_raw_old until you type YES to remove it.
@@ -27,7 +27,6 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(HERE.parent))
 import storage  # noqa: E402
 
 RAW, NEW, OLD = "f1_telemetry_raw", "f1_telemetry_raw_new", "f1_telemetry_raw_old"
@@ -421,8 +420,8 @@ def main():
                     say(f"\nPAUSED: the database is {e.args[0] / GB:.1f} GB, close to its storage limit of "
                         f"{limit / GB:.0f} GB.")
                     say("Nothing is lost: the copy stopped safely and f1_telemetry_raw is unchanged.")
-                    say("Either make the storage bigger in the Azure portal and run upgrade-db.bat again,")
-                    say("or run  upgrade-db.bat --cancel  to remove the half-made copy.")
+                    say("Either make the storage bigger in the Azure portal and run it again (tools.bat),")
+                    say("or choose 'Cancel an unfinished compression' in tools.bat to remove the half-made copy.")
                     return
                 ok, a, b = swap(conn)
                 if not ok:
@@ -443,14 +442,14 @@ def main():
                 if typed == "YES":
                     drop_old(conn)
                 else:
-                    say("Kept. Remove it later with:  upgrade-db.bat --drop-old")
+                    say("Kept. Remove it later with tools.bat > 'Remove the old uncompressed copy'.")
                 did = True
         elif raw:
             say("\nTimescaleDB is not switched on for this server, so the packets can't be compressed yet.")
             say("Switch it on once in the Azure portal: the database server > Server parameters:")
             say("  azure.extensions          -> tick TIMESCALEDB")
             say("  shared_preload_libraries  -> tick TIMESCALEDB, Save (the server restarts)")
-            say("Then run upgrade-db.bat again.")
+            say("Then run the compression again (tools.bat).")
             if p["session_idx"] and ask("Meanwhile, clean up the big session_uid index (saves space)?", "y"):
                 index_cleanup(conn)
                 did = True
@@ -480,4 +479,4 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        say("\nStopped. Run upgrade-db.bat again to continue where it was.")
+        say("\nStopped. Run the compression again (tools.bat) to continue where it was.")

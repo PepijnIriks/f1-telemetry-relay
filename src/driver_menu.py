@@ -14,17 +14,12 @@ import tkinter as tk
 import urllib.request
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import read_config  # noqa: E402
 
 
 def http_port():
-    port = "8000"
-    cfg = ROOT / "config" / "config.env"
-    if cfg.exists():
-        for line in cfg.read_text(encoding="utf-8").splitlines():
-            if line.strip().startswith("HTTP_PORT="):
-                port = line.split("=", 1)[1].strip() or port
-    return port
+    return read_config().get("HTTP_PORT", "8000").strip() or "8000"
 
 
 # 127.0.0.1 and not "localhost": on Windows "localhost" first tries IPv6, which the relay does not

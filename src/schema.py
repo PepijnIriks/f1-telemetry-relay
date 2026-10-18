@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS f1_telemetry_raw (
     payload BYTEA
 );
 -- (Older versions also made an index on session_uid here. It is no longer needed: packets are found by run_id.
---  upgrade-db.bat replaces it by a small index for only the old rows without run_id, or removes it entirely
+--  The compression upgrade (tools.bat) replaces it by a small index for only the old rows without run_id, or removes it entirely
 --  when the table is moved to the compressed format.)
 CREATE TABLE IF NOT EXISTS f1_sessions (
     session_uid TEXT,

@@ -60,7 +60,7 @@ def friendly_db_error(e):
     msg = str(e).strip()
     low = msg.lower()
     if "password authentication failed" in low:
-        return "Wrong password or username in the Key Vault secret (run setup-keyvault.bat again)"
+        return "Wrong password or username in the Key Vault secret (tools.bat > Key Vault setup)"
     if "timeout" in low or "timed out" in low:
         return "Server unreachable (time-out): check the firewall rule in Azure and your internet connection"
     if "no pg_hba.conf" in low:
@@ -86,8 +86,8 @@ def storage_check(conn):
     state["db"]["raw_compressed"] = raw["hypertable"] and raw["compressed"]
     print(f"[DB] Storage: database {db_size / gb:.1f} GB in total ({storage.describe(raw)})", flush=True)
     if can_compress and raw["size"] > gb:
-        print("[DB] Tip: the raw packets are not compressed yet. Close the relay and double-click upgrade-db.bat "
-              "once: the same data then takes much less space.", flush=True)
+        print("[DB] Tip: the raw packets are not compressed yet. Close the relay and run tools.bat > "
+              "Compress the database once: the same data then takes much less space.", flush=True)
     if warn_gb > 0 and db_size > warn_gb * gb:
         msg = (f"Database is {db_size / gb:.1f} GB, above the warning level of {warn_gb:g} GB. Make the storage "
                "bigger in the Azure portal (f1db > Compute + storage) before it is full, or it becomes read-only.")
@@ -186,14 +186,14 @@ def spool_everything(reason="relay is closing"):
             pending[k] = v
     if not spool.is_empty(b):
         spool.save(b)
-        print(f"[DB] {reason}: {len(b['pkts']):,} packets not in Azure yet are saved on this PC (folder 'spool') "
+        print(f"[DB] {reason}: {len(b['pkts']):,} packets not in Azure yet are saved on this PC (folder data\\spool) "
               "and sent to Azure the next time the relay connects.", flush=True)
 
 
 def db_worker():
     url = CFG["DATABASE_URL"]
     if not url:
-        state["db"]["hint"] = CFG["DB_SECRET_ERROR"] or "No database configured (run setup-keyvault.bat)"
+        state["db"]["hint"] = CFG["DB_SECRET_ERROR"] or "No database configured (start.bat sets it up, or tools.bat > Key Vault setup)"
         return
     import importlib.util
     if importlib.util.find_spec("psycopg2") is None:

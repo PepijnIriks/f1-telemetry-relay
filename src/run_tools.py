@@ -11,10 +11,11 @@ from db import db_connect, ensure_schema
 from f1_format import LAP_STRUCT, SESSION_TYPES, TRACKS
 from legacy import merge_samples, raw_f22
 from schema import CORNER_INSERT, TRACE_INSERT
-from shared import ROOT, RUN_FILTER
+from paths import DOWNLOADS
+from shared import RUN_FILTER
 
 
-DOWNLOAD_DIR = ROOT / "downloads"          # temporary zips for the download button
+DOWNLOAD_DIR = DOWNLOADS                   # temporary zips for the download button (data/downloads)
 DOWNLOAD_README = """F1 22 telemetry relay - one stored run
 
 run.json            driver, track, session type, start/end of the run

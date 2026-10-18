@@ -4,7 +4,7 @@ Makes (or renews) a READ-ONLY database account for the other group's dashboard.
 The account "f1_reader" can read every table (also tables made later), but can never change or delete
 anything. Its login is stored in Azure Key Vault as secret "f1-readonly-url"; nothing is written to a file.
 
-Usage: double-click create-readonly-user.bat (the database must be on: start start.bat first if needed).
+Usage: tools.bat > "Read-only account for the dashboard group" (the database is started if it is off).
 """
 import os
 import secrets
@@ -29,7 +29,7 @@ def main():
         sys.exit(f"No database login: {err}")
     vault = cfg.get("KEYVAULT_NAME", "").strip()
     if not vault:
-        sys.exit("KEYVAULT_NAME is empty in config/config.env (run setup-keyvault.bat first)")
+        sys.exit("KEYVAULT_NAME is empty in config/config.env (start.bat sets it up, or tools.bat > Key Vault setup)")
     azure_firewall.ensure(cfg)
 
     import psycopg2

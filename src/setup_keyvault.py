@@ -2,7 +2,7 @@
 One-time setup: puts the database login in Azure Key Vault, so no username or password is
 stored in the code or in config/config.env.
 
-Usage: double-click setup-keyvault.bat (needs the Azure CLI and 'az login').
+Usage: start.bat runs it the first time; later tools.bat > Key Vault setup (needs the Azure CLI and 'az login').
 
 What it does:
   1. Logs in to Azure (browser) if needed.
@@ -28,19 +28,11 @@ from urllib.parse import quote
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import secrets_store as ss  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
-CFG_FILE = ROOT / "config" / "config.env"
+from paths import CONFIG_FILE as CFG_FILE, read_config  # noqa: E402
 
 
 def read_cfg():
-    cfg = {}
-    if CFG_FILE.exists():
-        for line in CFG_FILE.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                cfg[k.strip()] = v.strip().strip('"')
-    return cfg
+    return read_config()
 
 
 def ask(text, default=""):
@@ -76,7 +68,7 @@ def write_cfg(vault, secret):
             line, _ = f"KEYVAULT_SECRET={secret}", done.add(key)
         out.append(line)
     if "KEYVAULT_NAME" not in done:
-        out += ["", "# Azure Key Vault with the database login (made by setup-keyvault.bat)", f"KEYVAULT_NAME={vault}"]
+        out += ["", "# Azure Key Vault with the database login (made by the Key Vault setup)", f"KEYVAULT_NAME={vault}"]
     if "KEYVAULT_SECRET" not in done:
         out.append(f"KEYVAULT_SECRET={secret}")
     CFG_FILE.write_text("\n".join(out) + "\n", encoding="utf-8")
