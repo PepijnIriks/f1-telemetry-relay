@@ -2,6 +2,14 @@
 
 What changed in each version, in plain words. The details of every change are in the commits on GitHub.
 
+## v1.2.1 - October 2026
+
+### Fix: firewall rule failed with a newer Azure CLI
+- Newer Azure CLI versions renamed the options of `az postgres flexible-server firewall-rule`
+  (`--server-name <server> --name <rule>` instead of `--name <server> --rule-name <rule>`). On the game PC
+  this gave `unrecognized arguments: --rule-name`. The relay and `tools.bat` > 8 now try the new names first
+  and fall back to the old ones, so both old and new CLI versions work. Test: `tests/test_firewall.py`.
+
 ## v1.2 - October 2026
 
 ### Tidier folder, easy to put on another computer

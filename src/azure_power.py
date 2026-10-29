@@ -232,11 +232,12 @@ class AzurePower:
             return
         if ip == self.fw_ip:
             return
-        args = self._srv() + ["--rule-name", self.fw_rule, "--start-ip-address", ip, "--end-ip-address", ip]
+        from azure_firewall import rule_cmd
+        args = ["--resource-group", self.rg, "--start-ip-address", ip, "--end-ip-address", ip]
         print(f"[AZURE] Firewall: allowing this PC's IP {ip} (can take a minute)...", flush=True)
-        rc, out, err = self._az(["postgres", "flexible-server", "firewall-rule", "create"] + args, timeout=300)
+        rc, out, err = rule_cmd(self._az, "create", self.server, self.fw_rule, args)
         if rc != 0:
-            rc, out, err = self._az(["postgres", "flexible-server", "firewall-rule", "update"] + args, timeout=300)
+            rc, out, err = rule_cmd(self._az, "update", self.server, self.fw_rule, args)
         if rc == 0:
             self.fw_ip = ip
             print(f"[AZURE] Firewall: IP {ip} allowed (rule '{self.fw_rule}')", flush=True)

@@ -58,6 +58,38 @@ def az_json(args, timeout=120):
         return None, out[:300]
 
 
+# Newer Azure CLI versions renamed the options of "az postgres flexible-server firewall-rule":
+#   new:  --server-name <server> --name <rule>
+#   old:  --name <server> --rule-name <rule>
+# We try the new form first and fall back to the old one, so every computer works whatever version it has.
+_STYLE = {"v": None}
+
+
+def _rule_flags(style, server, rule):
+    if style == "old":
+        return ["--name", server, "--rule-name", rule]
+    return ["--server-name", server, "--name", rule]
+
+
+def _wrong_flags(out, err):
+    text = f"{err} {out}".lower()
+    return "unrecognized arguments" in text or "the following arguments are required" in text
+
+
+def rule_cmd(run, action, server, rule, extra=(), timeout=300):
+    """Runs 'az postgres flexible-server firewall-rule <action>' with the option names this computer's
+    Azure CLI understands. run(args, timeout=...) -> (rc, out, err). Returns (rc, out, err)."""
+    base = ["postgres", "flexible-server", "firewall-rule", action]
+    styles = [_STYLE["v"]] if _STYLE["v"] else ["new", "old"]
+    rc, out, err = 1, "", "no attempt"
+    for style in styles:
+        rc, out, err = run(base + _rule_flags(style, server, rule) + list(extra), timeout=timeout)
+        if not _wrong_flags(out, err):
+            _STYLE["v"] = style
+            return rc, out, err
+    return rc, out, err
+
+
 def find_server(cfg):
     """(server name, resource group, subscription id, state) of the database, or raises RuntimeError."""
     name = cfg.get("AZURE_SERVER_NAME", "").strip()
@@ -108,9 +140,12 @@ def ensure(cfg=None, quiet=False):
         return False
 
     rule = rule_name()
-    base = ["postgres", "flexible-server", "firewall-rule"]
-    srv = ["--resource-group", rg, "--name", server, "--subscription", sub]
-    current, _e = az_json(base + ["show"] + srv + ["--rule-name", rule], timeout=120)
+    common = ["--resource-group", rg, "--subscription", sub]
+    rc, out, _e = rule_cmd(ss.az, "show", server, rule, common + ["-o", "json"], timeout=120)
+    try:
+        current = json.loads(out) if rc == 0 and out else None
+    except ValueError:
+        current = None
     if current and current.get("startIpAddress") == ip and current.get("endIpAddress") == ip:
         say(f"OK: {ip} is already allowed on {server} (rule '{rule}')")
         return True
@@ -119,10 +154,10 @@ def ensure(cfg=None, quiet=False):
             "start.bat sets the rule after starting the database.")
         return False
     say(f"allowing {ip} on {server} (rule '{rule}', takes about a minute)...")
-    args = srv + ["--rule-name", rule, "--start-ip-address", ip, "--end-ip-address", ip]
-    rc, out, err = ss.az(base + ["create"] + args + ["-o", "none"], timeout=300)
+    args = common + ["--start-ip-address", ip, "--end-ip-address", ip, "-o", "none"]
+    rc, out, err = rule_cmd(ss.az, "create", server, rule, args)
     if rc != 0:
-        rc, out, err = ss.az(base + ["update"] + args + ["-o", "none"], timeout=300)
+        rc, out, err = rule_cmd(ss.az, "update", server, rule, args)
     if rc == 0:
         say(f"OK: {ip} allowed on {server} (rule '{rule}')")
         return True
