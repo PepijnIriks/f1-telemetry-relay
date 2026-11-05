@@ -17,10 +17,10 @@ the database is explained for the dashboard group in [DATA.md](DATA.md).
 - [Notes](#notes)
 - [What is stored](#what-is-stored)
 - [Nothing gets lost](#nothing-gets-lost)
-- [Database login: Azure Key Vault](#database-login-azure-key-vault)
-- [Database on/off and firewall (automatic)](#database-onoff-and-firewall-automatic)
+- [The database server on Educloud](#the-database-server-on-educloud)
+- [Database login: Windows Credential Manager](#database-login-windows-credential-manager)
 - [Compressed storage](#compressed-storage)
-- [Keeping costs down](#keeping-costs-down)
+- [Disk space and backups](#disk-space-and-backups)
 - [Read-only account for the other group](#read-only-account-for-the-other-group)
 - [Website only on this PC](#website-only-on-this-pc)
 - [Tests](#tests)
@@ -77,7 +77,7 @@ How it works:
 
 ## In the Races tab
 - **Download**: everything of one run as a zip: laps, corners, speed lines and every raw packet (CSV), for a
-  backup outside Azure or to analyse in Excel/Python. A README in the zip explains the files.
+  backup outside the database or to analyse in Excel/Python. A README in the zip explains the files.
 - **Change driver**: forgot to switch? Give the run the right name afterwards. Only the name in `f1_sessions`
   changes (the stored packets are not rewritten, so it is instant and the database does not grow).
 
@@ -109,8 +109,7 @@ driver who was fastest there. **Play ghost** lets every driver's lap drive over 
 Open http://127.0.0.1:8000/status (or "Status" at the top): relay running, game data coming in, who drives,
 database connected, packets stored today and anything still waiting on this PC. Every minute the relay also
 writes this to the table `f1_status` (one row, `info` as JSON), so the other group can check from their side
-whether data is coming in: if `updated_at` is more than a few minutes old, the relay is not running or the
-database is off.
+whether data is coming in: if `updated_at` is more than a few minutes old, the relay is not running.
 
 ## Old races
 The relay reads (read only) the tables `f22_car_telemetry`, `f22_lap_data`, `f22_motion`, `f22_session` and `f22_session_history` of the earlier collector, if they are in the same database. If that fails, a message appears at the top of the Races tab; `tools.bat` > 1 shows what is in the database.
@@ -134,56 +133,38 @@ columns itself on start (nothing to do by hand).
 Every table and column is explained in [DATA.md](DATA.md) (written for the group that builds the dashboard).
 
 ## Nothing gets lost
-Everything that is not in Azure yet (database off or still starting, no internet, relay closed) is written
+Everything that is not in the database yet (VM off or being updated, no internet, relay closed) is written
 to the folder `data\spool` on this PC. As soon as the database can be reached again, the relay sends those files to
-Azure (oldest first, new data waits until they are in) and only removes a file after Azure confirmed it.
+the database (oldest first, new data waits until they are in) and only removes a file after the database confirmed it.
 This also works after a restart, a closed window or a PC shutdown. In the black window you see
-`[DB] Sent ... saved packets from this PC to Azure`. Don't delete `data\spool` while it has files.
+`[DB] Sent ... saved packets from this PC to the database`. Don't delete `data\spool` while it has files.
 
-## Database login: Azure Key Vault
-No username or password is stored in the code or in `config/config.env`. The full connection string
-(server, username, password) is a secret in **Azure Key Vault**; the relay reads it at startup with your
-`az login`. `config/config.env` only contains the name of the vault (`KEYVAULT_NAME`) and of the secret
-(`KEYVAULT_SECRET`, default `f1-database-url`).
+## The database server on Educloud
+The database is PostgreSQL 16 (with TimescaleDB) on an Ubuntu VM in **Fontys Educloud**. It is always on, so
+there is nothing to turn on or off and no firewall rule per computer: every PC with the login can store data,
+from school, from home or anywhere else. The VM is set up with one script, `server/install-educloud.sh`;
+step by step in [EDUCLOUD.md](EDUCLOUD.md). What it sets up:
+- database `f1` with the login `f1_relay` (a long random password made on the VM),
+- **encrypted connections only** (TLS); unencrypted connections are refused,
+- from outside only the accounts `f1_relay` and `f1_reader`, only to the database `f1`; the superuser
+  `postgres` only works on the VM itself,
+- firewall (ufw): only SSH and PostgreSQL (port 5432) are open; fail2ban blocks SSH password guessing,
+- a backup of the whole database every night in `/var/backups/f1` on the VM (the last 14 are kept).
 
-The vault is **F1Vault** (resource group F1, Poland Central). `start.bat` sets it up by itself the first time the login can't be read
-(later again: `tools.bat` > 6 Key Vault setup). It:
-1. uses the vault in `KEYVAULT_NAME` (or creates one if it does not exist),
-2. gives your own account access to the secrets,
-3. looks up the server name and admin username in Azure (you don't type them),
-4. asks for the database password (hidden) **or** makes a new strong password and sets it on the server,
-5. stores the connection string in the vault and writes `KEYVAULT_NAME` in `config/config.env`.
+## Database login: Windows Credential Manager
+No username or password is stored in the code, in `config/config.env` or on GitHub. The full login line
+(`postgresql://f1_relay:<password>@<VM address>:5432/f1?sslmode=require`) is kept in the
+**Windows Credential Manager** of each PC (Control Panel > Credential Manager > Windows Credentials >
+`f1-telemetry-relay`).
+
+`start.bat` asks for it the first time on a computer (later again: `tools.bat` > 6 Database login). On the VM,
+show the line with `sudo bash install-educloud.sh --show` and paste it (you don't see it while pasting). Or press
+Enter and type the address and password separately. The login is tested before it is stored.
 
 At the top of the website it says "database OK" when it works; otherwise it shows what is wrong (also in the
-black window, lines starting with `[SECRETS]` and `[DB]`). Other people who run the relay or the tools
-need the role **Key Vault Secrets User** on the vault (portal > key vault > Access control (IAM)).
-For a quick local test you can pass a connection string in the environment variable `DATABASE_URL` instead.
-
-## Database on/off and firewall (automatic)
-The relay manages the Azure database itself, so it doesn't use credit all day:
-- **On** when the relay starts (takes 2 to 5 minutes; data that already comes in is kept and written afterwards).
-- **Off** after `AZURE_STOP_AFTER_MIN` minutes (default 10) without racing and without anyone using the Races tab.
-  It only turns back on when someone really races again (car driving on track), or when you click
-  **Start database** in the Races tab. Game menus, a paused game or opening the website do not turn it on.
-- **Off** when you close the relay (close the window or Ctrl+C).
-- **Firewall:** the current public IP of this PC is put in the Azure firewall automatically (one rule called
-  `relay-<computer name>`, updated when your IP changes). Turn it off with `AZURE_AUTO_FIREWALL=0`.
-
-### Always access from this computer (no manual firewall rules)
-Every computer that uses the database gets its own firewall rule `relay-<computer name>`, which is updated
-automatically when its public IP changes (other wifi, school, home). This happens:
-- when you start `start.bat` or a database tool in `tools.bat`,
-- and every 15 minutes in the background after `tools.bat` > 8 (a Windows scheduled task; turn it off with
-  `tools.bat` > 9). Handy when you use pgAdmin or DBeaver without the relay. What it did is written to
-  `data\firewall.log`.
-
-Azure does not allow firewall changes while the database is stopped; the relay sets the rule right after it
-has started the database. Check it by hand (PowerShell, in this folder): `.venv\Scripts\python.exe src\azure_firewall.py`
-
-Needs the Azure CLI (`start.bat` offers to install it the first time) and one `az login`.
-Messages about this appear in the black window (lines starting with `[AZURE]`). Turn the on/off feature off with `AZURE_AUTO_POWER=0`.
-
-Note: while the database is off, the other group (dashboard) can't reach it either.
+black window, lines starting with `[SECRETS]` and `[DB]`). Note: everyone who uses the same Windows account on
+the game PC can use the stored login. For a quick local test you can pass a connection string in the
+environment variable `DATABASE_URL` instead.
 
 ## Compressed storage
 The raw packets are by far the biggest part of the database. Run **`tools.bat` > 3 Compress the database** once
@@ -198,12 +179,11 @@ How it works:
    until you type `YES`, or later with `tools.bat` > 4 (which checks again first).
 
 Safe to stop: close the window at any moment and start it again, it continues where it was. It pauses on its
-own before the database gets within 3 GB of its storage limit. `tools.bat` > 5 removes only a
+own before the database gets within 3 GB of its storage limit (`DB_STORAGE_GB` in `config/config.env`). `tools.bat` > 5 removes only a
 half-made copy, never your data.
 
-TimescaleDB must be switched on for the server (the earlier collector already used it). If it is not, the
-script says how (Azure portal > the server > Server parameters: tick `TIMESCALEDB` in `azure.extensions` and
-in `shared_preload_libraries`, save, the server restarts) and meanwhile offers a smaller clean-up: the big
+TimescaleDB must be installed on the server; `install-educloud.sh` does that. If it is not, the script says
+so (run `install-educloud.sh` on the VM again) and meanwhile offers a smaller clean-up: the big
 index on `session_uid` is replaced by a small one for only the old rows that have no `run_id`.
 It can also compress the `f22_` tables of the earlier collector.
 
@@ -211,23 +191,22 @@ How much space it saves depends on the data: in a test with simulated races the 
 about 19x smaller; real game data varies more, so expect less. After the upgrade the black window shows the
 real number every 10 minutes (`[DB] Storage: ... compressed 6.2x (saves ... GB)`).
 
-## Keeping costs down
-The Azure server is a Burstable B1ms with 64 GB storage and **storage autogrow off**, so the storage bill is
-fixed and can't grow by itself. The things that matter:
-- **Database off when nobody races** (see "Database on/off"): compute is billed per hour only while it is on.
+## Disk space and backups
 - **Nothing is ever thrown away:** every packet is stored, so all data can be found later.
-- **Compressed:** after the compression (`tools.bat` > 3) the packets take far less space, so the 64 GB lasts much longer and
-  the storage never has to be made bigger (which costs extra every month and can never be undone).
-- **Warning before it is full:** a full database becomes read-only. When the database passes `DB_WARN_GB`
-  (default 50 of the 64 GB), the black window and the website show a warning, so you can make the storage
-  bigger in the Azure portal in time (f1db > Compute + storage; storage can only grow, never shrink).
+- **Compressed:** after the compression (`tools.bat` > 3) the packets take far less space on the VM's disk.
+- **Warning before it is full:** a full disk stops PostgreSQL. When the database passes `DB_WARN_GB`
+  (default 45), the black window and the website show a warning, so the VM's disk can be made bigger in
+  Educloud in time. Set `DB_STORAGE_GB` to the size of the VM's disk.
 - The size is printed every 10 minutes in the black window (`[DB] Storage: ...`) and shown on the Raw tab.
+- **Backups:** every night at 04:15 the VM writes a full backup to `/var/backups/f1` (the last 14 days are kept).
+  Make one by hand with `sudo f1-backup`. These backups are on the same VM: for a copy elsewhere, use
+  `tools.bat` > 2 (CSV export) or download a `.dump` file with `scp` (see [EDUCLOUD.md](EDUCLOUD.md)).
 
 ## Read-only account for the other group
-Run `tools.bat` > 7 (the database is started if it is off). It makes the account `f1_reader` that can read
-every table, also tables made later, but can never change or delete anything, and stores its login in Key Vault
-(secret `f1-readonly-url`). The window shows how to get it to the other group. Running it again gives a new
-password (the old one stops working). They also need their own IP in the database firewall.
+Run `tools.bat` > 7. It makes the account `f1_reader` that can read every table, also tables made later, but
+can never change or delete anything. The window shows its login once (it is also kept in the Windows
+Credential Manager of this PC); send it to the other group privately. Running it again gives a new password
+(the old one stops working). They can connect from anywhere (encrypted only); no firewall rule is needed.
 
 ## Website only on this PC
 By default the website and the telemetry port only accept connections from this PC (`WEB_HOST=127.0.0.1`,
@@ -236,8 +215,8 @@ Want to watch on a phone or tablet? Set `WEB_HOST=0.0.0.0` in `config/config.env
 `http://<IP of this PC>:8000` there (anyone on that network can then use it).
 
 ## Tests
-`tools.bat` > 10: about 25 automated tests run in a few seconds, without the game and without
-Azure. They send a recorded (simulated) race through the relay and check that every packet is passed on
+`tools.bat` > 8: about 25 automated tests run in a few seconds, without the game and without
+the real database. They send a recorded (simulated) race through the relay and check that every packet is passed on
 unchanged, that laps, sectors, corners and lap traces come out right, that a driver switch starts a new run,
 and the calculations (consistency, pit advice, corner comparison) and the safety net on disk.
 Database tests (including the whole compression upgrade) run when `TEST_DATABASE_URL` points to a local,

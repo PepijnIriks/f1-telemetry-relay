@@ -2,6 +2,28 @@
 
 What changed in each version, in plain words. The details of every change are in the commits on GitHub.
 
+## v1.3 - November 2026
+
+### The database moves from Azure to Fontys Educloud
+- **New: `server/install-educloud.sh`** sets up an Ubuntu VM in Educloud in one go: PostgreSQL 16 with
+  TimescaleDB, database `f1` with the login `f1_relay`, encrypted connections only (TLS), only the F1 accounts
+  from outside, a firewall (ufw, only SSH and 5432) with fail2ban, and a backup every night. Running it again is
+  safe. Step by step: [EDUCLOUD.md](EDUCLOUD.md).
+- **Database login in the Windows Credential Manager** instead of Azure Key Vault: `start.bat` asks for it the
+  first time (the line the VM shows), `tools.bat` > 6 changes it. It is tested before it is stored. Still no
+  password in the code or on GitHub.
+- **Azure removed:** no Azure CLI or `az login` needed anymore. Gone: the automatic database on/off
+  (`azure_power.py`), the firewall rule per computer (`azure_firewall.py`, also the scheduled task, which
+  `start.bat` removes), the Key Vault setup (`setup_keyvault.py`) and their settings in `config/config.env`.
+  The VM is always on, and every PC with the login can reach it from anywhere.
+- Still there: data that can't reach the database waits on the PC (`data\spool`), also when the window is
+  closed (now in `src/db_server.py`).
+- Read-only account for the dashboard group (`tools.bat` > 7): the login is shown once and kept in the
+  Windows Credential Manager; no firewall rule needed for them.
+- `tools.bat` is shorter: 8 = tests, 9 = GitHub (were 10 and 11). New setting `DB_STORAGE_GB` (size of the
+  VM's disk) for the compression's safety stop; `DB_WARN_GB` is now 45.
+- The relay can see whether TimescaleDB is there without superuser rights (needed on the VM).
+
 ## v1.2.1 - October 2026
 
 ### Fix: firewall rule failed with a newer Azure CLI
