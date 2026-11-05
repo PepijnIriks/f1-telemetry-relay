@@ -1,5 +1,17 @@
 # Database server on Fontys Educloud
 
+> **Our setup:** project **F1-Telemetry** in Educloud (CloudStack), network `f1-net` (10.1.1.0/24),
+> address **10.53.15.32** for everything (port forwarding):
+>
+> | Port on 10.53.15.32 | Goes to | What |
+> |---|---|---|
+> | 5432 | `f1-db` (10.1.1.223) | PostgreSQL database |
+> | 22 | `f1-db` (10.1.1.223) | SSH to the database VM |
+> | 80 | `f1-web` (10.1.1.50), port 8000 | Demo website: **http://10.53.15.32** |
+>
+> **10.53.15.32 is a Fontys-internal address: every PC (also the game PC) needs the Educloud VPN**
+> (OpenVPN Connect, profile `vpn.educloud.fontysict.nl`). eduroam alone is not enough.
+
 The relay stores everything in PostgreSQL on an Ubuntu VM in Fontys Educloud. This page sets that VM up
 from nothing. It takes about 15 minutes, most of it waiting.
 
@@ -29,11 +41,14 @@ ssh <username>@<address of the VM>
 Or use the console in the Educloud portal.
 
 ## 3. Run the setup script
-On **the Educloud VM**:
+On **the Educloud VM** (the repository is private, so the download only works while it is public; otherwise
+copy the file with `scp` from a PC that has the code):
 ```
 wget https://raw.githubusercontent.com/PepijnIriks/f1-telemetry-relay/main/server/install-educloud.sh
 sudo bash install-educloud.sh
 ```
+The address in the login line it shows is the internet address of Fontys, which does not work: **replace it
+with 10.53.15.32** (the address in the Educloud portal under Network > Public IP addresses).
 It installs and sets up PostgreSQL 16 with TimescaleDB, the database `f1`, the login `f1_relay`, encrypted
 connections, the firewall and the nightly backup. At the end it shows a block like this:
 ```
@@ -62,6 +77,16 @@ The relay window then says `[DB] Connected to <address> - tables ready, data is 
 ## 5. Give the dashboard group access
 On **the game PC**: `tools.bat` > 7 makes the read-only account `f1_reader` and shows its login. Send it to
 them privately. What they can find in the database is in [DATA.md](DATA.md).
+
+## Demo website (second VM)
+`server/install-web.sh` sets up the VM `f1-web`: the relay's website in demo mode, for everyone with the VPN on
+**http://10.53.15.32**. Live/Raw show a fake game that drives laps all the time (nothing of it is stored);
+Races/Leaderboard show the real races from `f1-db`; stored races can't be changed there.
+- The code comes from GitHub with a **read-only deploy key** of that VM (repo > Settings > Deploy keys).
+- The database login is not typed in: on **the Educloud VM (f1-db)**, as root, run once
+  `curl -s --upload-file /root/f1-database-login.txt 10.1.1.50/`
+- On **the Educloud VM (f1-web)**, as root: `f1-update` gets the newest code;
+  `systemctl status f1-demo-web` and `journalctl -u f1-demo-web -n 50` show how it runs.
 
 ## Every day: nothing to do
 The VM is always on and the relay connects by itself. Useful commands, all on **the Educloud VM**:
