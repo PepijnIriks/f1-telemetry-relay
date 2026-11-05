@@ -9,6 +9,7 @@
 #  Demo mode: the fake laps are NEVER stored, and stored races can't be changed from this website.
 #
 #  The code comes from GitHub with a read-only deploy key (/etc/f1/deploy_key; the repository is private).
+#  It updates itself every 5 minutes (f1-auto-update.timer), so nobody has to log in to this VM.
 #  Normally the VM's cloud-init clones the repository and runs this script by itself. By hand (as root):
 #      bash /opt/f1/app/server/install-web.sh
 #
@@ -180,10 +181,47 @@ echo "Updated to: \$(git -C $APP log --oneline -1)"
 EOF
 chmod 755 /usr/local/bin/f1-update
 
+# Updates itself: every 5 minutes it looks on GitHub; when there is a new version it gets it and runs this
+# script again (so new services or settings are set up too). Nobody has to log in to the VM for updates.
+cat > /usr/local/bin/f1-auto-update <<'EOF'
+#!/usr/bin/env bash
+set -uo pipefail
+APP=/opt/f1/app
+export GIT_SSH_COMMAND="ssh -i /etc/f1/deploy_key -o UserKnownHostsFile=/etc/f1/known_hosts -o IdentitiesOnly=yes"
+sudo -u f1 --preserve-env=GIT_SSH_COMMAND git -C "$APP" fetch -q origin || exit 0
+HERE="$(sudo -u f1 git -C "$APP" rev-parse HEAD)"
+THERE="$(sudo -u f1 git -C "$APP" rev-parse '@{u}')"
+[ "$HERE" = "$THERE" ] && exit 0
+echo "New version on GitHub: updating $HERE -> $THERE"
+sudo -u f1 --preserve-env=GIT_SSH_COMMAND git -C "$APP" pull -q --ff-only || exit 1
+bash "$APP/server/install-web.sh" > /var/log/f1-web-install.log 2>&1
+EOF
+chmod 755 /usr/local/bin/f1-auto-update
+cat > /etc/systemd/system/f1-auto-update.service <<'EOF'
+[Unit]
+Description=F1 demo website - get the newest version from GitHub
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/f1-auto-update
+EOF
+cat > /etc/systemd/system/f1-auto-update.timer <<'EOF'
+[Unit]
+Description=F1 demo website - look for a new version every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+EOF
+
 systemctl daemon-reload
 systemctl enable f1-demo-web.service f1-demo-game.service f1-live-mux.service >/dev/null
 systemctl restart f1-demo-web.service f1-live-mux.service f1-demo-game.service
 [ -f "$ETC/db.env" ] || systemctl enable --now f1-receive-login.service >/dev/null
+systemctl enable --now f1-auto-update.timer >/dev/null
 
 say "5/5  Firewall: SSH, the website (8000), live data (udp 20777) and, from the internal network only, the login receiver (80)"
 ufw allow OpenSSH >/dev/null
