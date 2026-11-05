@@ -4,14 +4,15 @@ Live dashboard, completes laps (lap and sector times, corner analysis, lap trace
 to the database writer.
 """
 import asyncio
+import socket
 import struct
 import time
 
 from corners import corner_rows, corner_stats, lap_trace, trace_row
-from driver_runs import new_run
+from driver_runs import new_run, switch_driver
 from f1_format import (COMPOUNDS, DAMAGE_STRUCT, HEADER, HEADER_FIELDS, LAP_STRUCT, MOTION_SIZE, PACKET_NAMES,
                        SESSION_TYPES, STATUS_STRUCT, TEL_STRUCT, TRACKS, WEATHER)
-from shared import (POWER, carry_from, car_name, cornerbuf, db_queue, events, events_dirty, fmt_ms, grid_dirty,
+from shared import (CFG, DEMO, POWER, carry_from, car_name, cornerbuf, db_queue, events, events_dirty, fmt_ms, grid_dirty,
                     grid_state, lapstate, last_grid, live, live_buffer, live_dirty, names, numbers, records, ref_wanted,
                     refs, runs, sess, state, teams)
 
@@ -237,11 +238,59 @@ def parse_event(data, now):
         events_dirty[0] = True
 
 
+# ----------------------------------------------------------------- Live copy to the Educloud demo website
+# LIVE_FORWARD=10.53.15.32:20777 in config.env: every game packet is also sent (unchanged) to the demo website
+# on Educloud, so others can watch live from their own laptop (Educloud VPN on). Every 2 seconds a small
+# extra packet tells the website who is driving. If the VPN is off nothing breaks: sending just fails quietly.
+DRIVER_MAGIC = b"F1RELAY-DRIVER\x00"
+_fwd = {"sock": None, "addr": None, "beacon": 0.0, "warned": False}
+
+
+def _forward_target():
+    if _fwd["addr"] is None:
+        _fwd["addr"] = False
+        target = CFG.get("LIVE_FORWARD", "").strip()
+        if target and not DEMO and ":" in target:
+            host, port = target.rsplit(":", 1)
+            try:
+                _fwd["addr"] = (socket.gethostbyname(host.strip()), int(port))
+                _fwd["sock"] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                _fwd["sock"].setblocking(False)
+                print(f"[LIVE] Live data is also sent to {target} (the demo website on Educloud)", flush=True)
+            except (OSError, ValueError) as e:
+                print(f"[LIVE] LIVE_FORWARD={target} not usable ({e}); live data stays on this PC", flush=True)
+    return _fwd["addr"]
+
+
+def forward(data, now):
+    addr = _forward_target()
+    if not addr:
+        return
+    try:
+        _fwd["sock"].sendto(data, addr)
+        if now - _fwd["beacon"] >= 2:
+            _fwd["beacon"] = now
+            _fwd["sock"].sendto(DRIVER_MAGIC + (state["driver"] or "").encode("utf-8")[:60], addr)
+    except OSError:
+        if not _fwd["warned"]:
+            _fwd["warned"] = True
+            print("[LIVE] The demo website can't be reached (Educloud VPN off?); live data stays on this PC",
+                  flush=True)
+
+
 class UdpProtocol(asyncio.DatagramProtocol):
     def datagram_received(self, data, addr):
         now = time.time()
+        if data.startswith(DRIVER_MAGIC):
+            # Who drives on the game PC (sent by its relay); only used by the demo website
+            if CFG.get("ACCEPT_DRIVER", "0").strip() == "1":
+                name = data[len(DRIVER_MAGIC):].decode("utf-8", "replace").strip()
+                if name and name != state["driver"]:
+                    switch_driver(name, now)
+            return
         if len(data) < HEADER.size:
             return
+        forward(data, now)
         h = dict(zip(HEADER_FIELDS, HEADER.unpack_from(data)))
         pid = h["packet_id"]
         uid = str(h["session_uid"])
