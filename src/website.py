@@ -171,6 +171,8 @@ async def api_run_driver(request):
     Only f1_sessions changes: that is where the driver of a run is looked up. The raw packets are NOT rewritten
     (that would make PostgreSQL copy every packet of the run, so the table would grow by the size of the run,
     and compressed packets can't be changed cheaply). Their `driver` column keeps the name at recording time."""
+    if DEMO:
+        return web.json_response({"error": "Demo mode: stored races can't be changed here"})
     bad = db_unavailable()
     if bad:
         return bad

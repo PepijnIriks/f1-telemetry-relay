@@ -10,6 +10,7 @@ Where everything is. One place for the folders of the relay and for reading conf
 downloads/, firewall.log, config/*cache*.json) into data/ and removes old Python caches (__pycache__).
 start.bat does that automatically.
 """
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -34,6 +35,11 @@ def read_config(defaults=None):
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
                 cfg[k.strip()] = v.strip().strip('"')
+    # A server (e.g. the demo website on Educloud) can override any setting with an environment variable
+    # F1_<NAME>, for example F1_WEB_HOST=0.0.0.0, without changing config.env.
+    for key, value in os.environ.items():
+        if key.startswith("F1_") and len(key) > 3:
+            cfg[key[3:]] = value.strip()
     return cfg
 
 
