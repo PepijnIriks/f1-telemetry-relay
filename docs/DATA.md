@@ -1,16 +1,18 @@
 # F1 telemetry database - guide for the dashboard group
 
 This describes everything the relay stores, so you can build a dashboard on it without having to ask.
-All tables are in the `public` schema of the Azure PostgreSQL database and start with `f1_`.
+All tables are in the `public` schema of the PostgreSQL database `f1` (on a Fontys Educloud VM) and start
+with `f1_`.
 
 ## Getting access
 
 | What | How |
 |---|---|
-| Account | `f1_reader`, **read only** (can never change or delete anything). Ask Pepijn to run `tools.bat` > 7; the login is in Azure Key Vault **F1Vault**, secret `f1-readonly-url` |
-| Firewall | Your public IP must be allowed on the server: send it to Pepijn, or get the role to add a rule yourself (Azure portal > the server > Networking) |
-| Database on? | To save money the server is **off when nobody races** (it turns on when someone races). Check `f1_status` (below) or ask before you start working |
-| Connection | `sslmode=require`, port 5432, database `postgres` |
+| Account | `f1_reader`, **read only** (can never change or delete anything). Ask Pepijn to run `tools.bat` > 7; he sends you the login privately |
+| Address | The VM's address (in the login Pepijn sends), port 5432 |
+| Connection | database `f1`, **`sslmode=require`** (unencrypted connections are refused) |
+| Firewall | Nothing to do: the server accepts `f1_reader` from every address, encrypted only |
+| Database on? | The server is always on. Check `f1_status` (below) to see whether the relay is sending data right now |
 
 ## The tables in one picture
 

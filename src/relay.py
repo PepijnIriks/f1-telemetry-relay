@@ -2,7 +2,7 @@
 F1 22 telemetry relay - start here (start.bat runs this file).
 - Listens on UDP (default port 20777) for packets from the game                      -> telemetry.py
 - Forwards them IMMEDIATELY to the website (http://127.0.0.1:8000) over WebSocket     -> website.py
-- Writes to PostgreSQL (Azure) in batches in the background: raw packets,
+- Writes to PostgreSQL (Educloud VM) in batches in the background: raw packets,
   an overview of runs and lap times. The database can never slow down the live view.  -> db.py
 - Every driver gets their own "run": changing the driver name closes the current run (it is kept
   in the database) and starts a new one, even if the game session simply continues.   -> driver_runs.py
@@ -62,7 +62,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    paths.tidy()                      # files of older versions -> data/ (also data waiting for Azure)
+    paths.tidy()                      # files of older versions -> data/ (also data waiting for the database)
     if intro.wanted(CFG, sys.argv):
         intro.play()
     load_database_url()
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        # Give Azure a few seconds to take what is still waiting, then save the rest on this PC
+        # Give the database a few seconds to take what is still waiting, then save the rest on this PC
         end = time.time() + 8
         while state["db"]["connected"] and (len(pending["pkts"]) or db_queue.qsize()) and time.time() < end:
             time.sleep(0.3)

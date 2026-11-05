@@ -4,7 +4,7 @@ data/
 __pycache__/
 *.pyc
 
-# Local settings and secrets (the database login lives in Azure Key Vault)
+# Local settings and secrets (the database login lives in the Windows Credential Manager)
 config/drivers.json
 *.local.env
 .env

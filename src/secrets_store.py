@@ -1,97 +1,82 @@
 """
-Gets the database connection string (with username and password) from Azure Key Vault,
-so no username or password is ever stored in the code or in config/config.env.
+Keeps the database login (connection string with username and password) in the Windows Credential Manager
+of this PC, so no username or password is ever stored in the code, in config/config.env or on GitHub.
 
-config/config.env only says WHERE the secret is:
-    KEYVAULT_NAME=<name of your key vault>
-    KEYVAULT_SECRET=f1-database-url
+    Windows: Control Panel > Credential Manager > Windows Credentials > "f1-telemetry-relay"
 
-The secret is read with the Azure CLI ("az"), with the account you are logged in with (az login).
-That account needs the role "Key Vault Secrets User" (read) or "Key Vault Secrets Officer"
-(read + write) on the vault. start.bat sets all of this up the first time (or tools.bat > Key Vault setup).
+The login is put there once with tools.bat > Database login (start.bat asks for it the first time).
+It is the line that server/install-educloud.sh shows on the Educloud VM:
+    postgresql://f1_relay:<password>@<address of the VM>:5432/f1?sslmode=require
 
-For testing on your own machine you can still pass a connection string in the environment
-variable DATABASE_URL (never in a file that goes to GitHub).
+For testing you can still pass a connection string in the environment variable DATABASE_URL
+(never in a file that goes to GitHub).
 """
 import os
-import shutil
-import subprocess
 
-DEFAULT_SECRET = "f1-database-url"
-
-
-def az_path():
-    return shutil.which("az") or shutil.which("az.cmd")
+SERVICE = "f1-telemetry-relay"
+DATABASE = "database-url"         # the relay's own login (f1_relay)
+READONLY = "readonly-url"         # the read-only login for the dashboard group (f1_reader)
 
 
-def az(args, timeout=60):
-    """Runs an Azure CLI command. Returns (returncode, stdout, stderr)."""
-    exe = az_path()
-    if not exe:
-        return 127, "", "Azure CLI not found"
+def _keyring():
     try:
-        p = subprocess.run([exe] + args + ["--only-show-errors"], capture_output=True, text=True,
-                           timeout=timeout, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-        return p.returncode, p.stdout.strip(), p.stderr.strip()
-    except subprocess.TimeoutExpired:
-        return 1, "", "time-out"
+        import keyring
+        return keyring
+    except Exception:
+        return None
+
+
+def get(name=DATABASE):
+    """Returns (value, error). value is '' when nothing is stored."""
+    kr = _keyring()
+    if kr is None:
+        return "", "the Python package 'keyring' is missing (start.bat installs it)"
+    try:
+        return kr.get_password(SERVICE, name) or "", ""
     except Exception as e:
-        return 1, "", str(e)
+        return "", f"the Windows Credential Manager could not be read ({str(e)[:150]})"
 
 
-def ensure_login(interactive=True):
-    rc, _o, _e = az(["account", "show", "-o", "none"])
-    if rc == 0 or not interactive:
-        return rc == 0
-    print("[SECRETS] Not logged in to Azure. A browser opens now: log in with your Fontys account.", flush=True)
+def store(value, name=DATABASE):
+    """Stores a login in the Windows Credential Manager. Returns '' or an error message."""
+    kr = _keyring()
+    if kr is None:
+        return "the Python package 'keyring' is missing (start.bat installs it)"
     try:
-        subprocess.run([az_path(), "login", "--only-show-errors", "-o", "none"], timeout=600)
+        kr.set_password(SERVICE, name, value)
+        return ""
+    except Exception as e:
+        return f"storing it in the Windows Credential Manager failed ({str(e)[:150]})"
+
+
+def remove(name=DATABASE):
+    kr = _keyring()
+    try:
+        kr.delete_password(SERVICE, name)
     except Exception:
         pass
-    rc, _o, _e = az(["account", "show", "-o", "none"])
-    return rc == 0
-
-
-def explain(err, vault):
-    low = err.lower()
-    if "forbidden" in low or "not authorized" in low or "does not have secrets get permission" in low:
-        return (f"your Azure account may not read secrets from key vault '{vault}'. Give it the role "
-                f"'Key Vault Secrets User' on the vault (or run tools.bat > Key Vault setup again)")
-    if "secretnotfound" in low or "was not found in this key vault" in low:
-        return f"the secret does not exist in key vault '{vault}' yet: run tools.bat > Key Vault setup"
-    if "getaddrinfo" in low or "failed to resolve" in low or "vaultnotfound" in low or "not found" in low:
-        return f"key vault '{vault}' was not found (check KEYVAULT_NAME in config/config.env)"
-    if "az login" in low or "please run" in low:
-        return "not logged in to Azure: run 'az login' once"
-    return err.replace("\n", " ")[:220]
 
 
 def database_url(cfg, interactive=True):
-    """Returns (url, where_from, error). url is '' when there is no database to use."""
+    """Returns (url, where_from, error). url is '' when there is no database to use.
+    'interactive' is kept for older callers; nothing here opens a window or a browser."""
     env = os.environ.get("DATABASE_URL", "").strip()
     if env:
         return env, "environment variable DATABASE_URL", ""
 
-    vault = cfg.get("KEYVAULT_NAME", "").strip()
-    secret = cfg.get("KEYVAULT_SECRET", "").strip() or DEFAULT_SECRET
-    if not vault:
-        legacy = cfg.get("DATABASE_URL", "").strip()
-        if legacy:
-            print("[SECRETS] WARNING: DATABASE_URL with a password is still in config/config.env. "
-                  "Run tools.bat > Key Vault setup to move it to Azure Key Vault.", flush=True)
-            return legacy, "config.env (not safe)", ""
-        return "", "", "No KEYVAULT_NAME in config/config.env (start.bat sets it up, or tools.bat > Key Vault setup)"
+    url, err = get(DATABASE)
+    if url:
+        return url, "the Windows Credential Manager", ""
 
-    if not az_path():
-        return "", "", ("Azure CLI not found: install it once (PowerShell): "
-                        "winget install -e --id Microsoft.AzureCLI")
-    if not ensure_login(interactive):
-        return "", "", "Not logged in to Azure (run 'az login')"
-    rc, out, err = az(["keyvault", "secret", "show", "--vault-name", vault, "--name", secret,
-                       "--query", "value", "-o", "tsv"])
-    if rc != 0 or not out:
-        return "", "", "Key Vault: " + explain(err or "empty secret", vault)
-    return out, f"Azure Key Vault '{vault}'", ""
+    legacy = cfg.get("DATABASE_URL", "").strip()
+    if legacy:
+        print("[SECRETS] WARNING: DATABASE_URL with a password is in config/config.env. Run tools.bat > "
+              "Database login to move it to the Windows Credential Manager, then remove it from the file.",
+              flush=True)
+        return legacy, "config.env (not safe)", ""
+    if err:
+        return "", "", f"No database login: {err}"
+    return "", "", "No database login on this PC yet: run tools.bat > Database login (start.bat asks for it)"
 
 
 if __name__ == "__main__":

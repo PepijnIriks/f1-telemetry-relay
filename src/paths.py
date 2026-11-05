@@ -2,14 +2,15 @@
 Where everything is. One place for the folders of the relay and for reading config/config.env.
 
     config/     settings (config.env) and the official corner list - the same on every computer
-    data/       everything THIS computer makes itself: data waiting for Azure (spool), exports,
+    data/       everything THIS computer makes itself: data waiting for the database (spool), exports,
                 download zips, caches, logs. Never on GitHub; safe to leave behind when you move PCs
-                (except data/spool while it still has files: that is race data not in Azure yet).
+                (except data/spool while it still has files: that is race data not in the database yet).
 
 `python src/paths.py` moves files from the places older versions used (spool/, exports/, zips/,
 downloads/, firewall.log, config/*cache*.json) into data/ and removes old Python caches (__pycache__).
 start.bat does that automatically.
 """
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -18,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = ROOT / "config"
 CONFIG_FILE = CONFIG_DIR / "config.env"
 DATA = ROOT / "data"
-SPOOL = DATA / "spool"                      # race data not in Azure yet (sent automatically later)
+SPOOL = DATA / "spool"                      # race data not in the database yet (sent automatically later)
 EXPORTS = DATA / "exports"                  # export_csv.py
 DOWNLOADS = DATA / "downloads"              # temporary zips of the download button
 CACHE = DATA / "cache"                      # track outlines, list of old races
@@ -34,6 +35,11 @@ def read_config(defaults=None):
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
                 cfg[k.strip()] = v.strip().strip('"')
+    # A server (e.g. the demo website on Educloud) can override any setting with an environment variable
+    # F1_<NAME>, for example F1_WEB_HOST=0.0.0.0, without changing config.env.
+    for key, value in os.environ.items():
+        if key.startswith("F1_") and len(key) > 3:
+            cfg[key[3:]] = value.strip()
     return cfg
 
 

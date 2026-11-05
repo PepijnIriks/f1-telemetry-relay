@@ -330,48 +330,33 @@ def ask(question, default="n"):
 
 
 def connect():
-    """Database login from Key Vault, firewall rule, start the server if it is off. Returns (conn, started)."""
+    """Database login from the Windows Credential Manager. Returns (conn, None)."""
     import os
     import psycopg2
     if os.environ.get("DATABASE_URL"):             # local tests
         return psycopg2.connect(os.environ["DATABASE_URL"]), None
-    import azure_firewall
     import secrets_store
-    from export_csv import database_on
-    cfg = azure_firewall.read_cfg()
-    url, where, err = secrets_store.database_url(cfg)
+    from paths import read_config
+    url, where, err = secrets_store.database_url(read_config())
     if not url:
         sys.exit(f"No database login: {err}")
     say(f"Login read from {where}")
-    started = database_on(cfg)
-    azure_firewall.ensure(cfg)
-    for _ in range(6):
+    for _ in range(3):
         try:
-            return psycopg2.connect(url, connect_timeout=20), started
+            return psycopg2.connect(url, connect_timeout=20), None
         except Exception as e:
-            say(f"  not reachable yet ({str(e).strip()[:120]}), retrying in 20 s...")
-            time.sleep(20)
-    sys.exit("Could not connect to the database.")
+            say(f"  not reachable yet ({str(e).strip()[:120]}), retrying in 10 s...")
+            time.sleep(10)
+    sys.exit("Could not connect to the database (is the Educloud VM on?).")
 
 
 def storage_limit():
-    """Storage size of the Azure server in bytes (from Azure), or DB_STORAGE_GB in config.env, or 64 GB."""
+    """Storage limit in bytes: DB_STORAGE_GB in config.env (the size of the VM's disk), or 64 GB."""
     import os
     if os.environ.get("DATABASE_URL"):
         return int(float(os.environ.get("DB_STORAGE_GB", "64")) * GB)
-    import azure_firewall
-    import secrets_store
-    cfg = azure_firewall.read_cfg()
-    try:
-        server, rg, sub, _state = azure_firewall.find_server(cfg)
-        rc, out, _err = secrets_store.az(["postgres", "flexible-server", "show", "--resource-group", rg, "--name",
-                                          server, "--subscription", sub, "--query", "storage.storageSizeGb",
-                                          "-o", "tsv"])
-        if rc == 0 and out.strip().isdigit():
-            return int(out.strip()) * GB
-    except Exception:
-        pass
-    return int(float(cfg.get("DB_STORAGE_GB", "64") or 64) * GB)
+    from paths import read_config
+    return int(float(read_config().get("DB_STORAGE_GB", "64") or 64) * GB)
 
 
 def show(p):
@@ -420,7 +405,7 @@ def main():
                     say(f"\nPAUSED: the database is {e.args[0] / GB:.1f} GB, close to its storage limit of "
                         f"{limit / GB:.0f} GB.")
                     say("Nothing is lost: the copy stopped safely and f1_telemetry_raw is unchanged.")
-                    say("Either make the storage bigger in the Azure portal and run it again (tools.bat),")
+                    say("Either make the VM's disk bigger in Educloud (and DB_STORAGE_GB in config.env) and run it again,")
                     say("or choose 'Cancel an unfinished compression' in tools.bat to remove the half-made copy.")
                     return
                 ok, a, b = swap(conn)
@@ -446,9 +431,8 @@ def main():
                 did = True
         elif raw:
             say("\nTimescaleDB is not switched on for this server, so the packets can't be compressed yet.")
-            say("Switch it on once in the Azure portal: the database server > Server parameters:")
-            say("  azure.extensions          -> tick TIMESCALEDB")
-            say("  shared_preload_libraries  -> tick TIMESCALEDB, Save (the server restarts)")
+            say("Run the setup script on the VM again; it installs TimescaleDB and switches it on:")
+            say("  sudo bash install-educloud.sh")
             say("Then run the compression again (tools.bat).")
             if p["session_idx"] and ask("Meanwhile, clean up the big session_uid index (saves space)?", "y"):
                 index_cleanup(conn)
@@ -467,12 +451,6 @@ def main():
         say("Done." if did else "Nothing changed.")
     finally:
         conn.close()
-        if started:                       # it was off before: turn it off again (saves costs)
-            import secrets_store
-            server, rg, sub = started
-            say(f"Turning database {server} off again (it was off before).")
-            secrets_store.az(["postgres", "flexible-server", "stop", "--resource-group", rg, "--name", server,
-                              "--subscription", sub, "--no-wait"], timeout=120)
 
 
 if __name__ == "__main__":

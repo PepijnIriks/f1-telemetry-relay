@@ -1,9 +1,9 @@
 """
 Safety net so NO data is ever lost.
 
-Everything that is not in Azure yet (database off or starting, no internet, relay closed) is written to
+Everything that is not in the database yet (VM off or unreachable, no internet, relay closed) is written to
 the folder data/spool on this PC. As soon as the database can be reached again, the relay sends those files
-to Azure (oldest first) and only removes a file after Azure has confirmed it is stored.
+to the database (oldest first) and only removes a file after the database has confirmed it is stored.
 This also works after a restart: files left behind are sent the next time the relay connects.
 """
 import os

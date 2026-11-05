@@ -1,5 +1,5 @@
 """
-Everything with the Azure database: the login (Key Vault), the tables, the background writer that sends
+Everything with the database on the Educloud VM: the login (Windows Credential Manager), the tables, the background writer that sends
 packets, laps, corners and lap traces in batches (the live view never waits for it), the safety net that keeps
 unsent data on this PC (spool), the storage check, the status row for the other group and small query helpers.
 """
@@ -31,7 +31,7 @@ def db_host():
 
 
 def load_database_url():
-    """Reads the connection string from Azure Key Vault (never from a file in the code)."""
+    """Reads the connection string from the Windows Credential Manager (never from a file in the code)."""
     url, where, err = secrets_store.database_url(CFG, interactive="--no-login" not in sys.argv)
     CFG["DATABASE_URL"], CFG["DB_SOURCE"], CFG["DB_SECRET_ERROR"] = url, where, err
     if url:
@@ -60,20 +60,20 @@ def friendly_db_error(e):
     msg = str(e).strip()
     low = msg.lower()
     if "password authentication failed" in low:
-        return "Wrong password or username in the Key Vault secret (tools.bat > Key Vault setup)"
+        return "Wrong password or username in the database login (tools.bat > Database login)"
     if "timeout" in low or "timed out" in low:
-        return "Server unreachable (time-out): check the firewall rule in Azure and your internet connection"
+        return "Server unreachable (time-out): is the Educloud VM on, and is port 5432 open? Check the internet too"
     if "no pg_hba.conf" in low:
-        return "Access denied by Azure: your IP address is not in the firewall or SSL is missing"
+        return "Access denied by the server: wrong user/database, or the connection is not encrypted (sslmode=require)"
     if "could not translate host" in low or "name or service not known" in low:
-        return "Server name not found: check the server name in the Key Vault secret"
+        return "Server name not found: check the VM address in the database login (tools.bat > Database login)"
     return msg.replace("\n", " ")[:220]
 
 
-# ----------------------------------------------------------------- Storage in Azure
+# ----------------------------------------------------------------- Storage on the VM
 # EVERY packet is stored and nothing is ever removed: all data must stay findable later.
 # The relay only keeps an eye on how full the database is, because a full database becomes read-only
-# (then nothing new can be stored). Azure storage: 64 GB, autogrow off.
+# (then nothing new can be stored). On the VM the limit is the size of its disk.
 def storage_check(conn):
     gb = 1024 ** 3
     warn_gb = float(CFG.get("DB_WARN_GB", "50") or 0)
@@ -90,16 +90,16 @@ def storage_check(conn):
               "Compress the database once: the same data then takes much less space.", flush=True)
     if warn_gb > 0 and db_size > warn_gb * gb:
         msg = (f"Database is {db_size / gb:.1f} GB, above the warning level of {warn_gb:g} GB. Make the storage "
-               "bigger in the Azure portal (f1db > Compute + storage) before it is full, or it becomes read-only.")
+               "bigger in the Educloud portal (the VM's disk) before it is full, or nothing new can be stored.")
         state["db"]["warning"] = msg
         print(f"[DB] WARNING: {msg}", flush=True)
     else:
         state["db"]["warning"] = ""
 
 
-# Data waiting for Azure. The writer thread swaps it out in one go, writes it, and puts it back if that failed.
+# Data waiting for the database. The writer thread swaps it out in one go, writes it, and puts it back if that failed.
 pending = spool.empty_batch()
-inflight = {"batch": None}           # batch being written right now (not confirmed by Azure yet)
+inflight = {"batch": None}           # batch being written right now (not confirmed by the database yet)
 pending_lock = threading.Lock()
 SPOOL_AT = 20_000                    # packets in memory without database -> to disk
 SPOOL_AFTER_S = 30                   # or older than this without database -> to disk
@@ -173,27 +173,27 @@ def drain_queue():
 
 
 def spool_everything(reason="relay is closing"):
-    """Writes everything that is not confirmed by Azure to disk (called when the relay stops)."""
+    """Writes everything that is not confirmed by the database to disk (called when the relay stops)."""
     if not state["db"]["enabled"]:
         return
     drain_queue()
     with pending_lock:
         b = {k: (dict(v) if isinstance(v, dict) else list(v)) for k, v in pending.items()}
-        if inflight["batch"] is not None:          # not confirmed yet: save it too (Azure may never get it)
+        if inflight["batch"] is not None:          # not confirmed yet: save it too (the database may never get it)
             spool.merge(b, inflight["batch"])
             inflight["batch"] = None
         for k, v in spool.empty_batch().items():
             pending[k] = v
     if not spool.is_empty(b):
         spool.save(b)
-        print(f"[DB] {reason}: {len(b['pkts']):,} packets not in Azure yet are saved on this PC (folder data\\spool) "
-              "and sent to Azure the next time the relay connects.", flush=True)
+        print(f"[DB] {reason}: {len(b['pkts']):,} packets not in the database yet are saved on this PC (folder data\\spool) "
+              "and sent to the database the next time the relay connects.", flush=True)
 
 
 def db_worker():
     url = CFG["DATABASE_URL"]
     if not url:
-        state["db"]["hint"] = CFG["DB_SECRET_ERROR"] or "No database configured (start.bat sets it up, or tools.bat > Key Vault setup)"
+        state["db"]["hint"] = CFG["DB_SECRET_ERROR"] or "No database configured (start.bat sets it up, or tools.bat > Database login)"
         return
     import importlib.util
     if importlib.util.find_spec("psycopg2") is None:
@@ -209,7 +209,7 @@ def db_worker():
     waiting = spool.count()
     if waiting:
         print(f"[DB] {waiting:,} packets from an earlier session are waiting on this PC; "
-              "they are sent to Azure as soon as it is reachable.", flush=True)
+              "they are sent to the database as soon as it is reachable.", flush=True)
 
     def report(ok, err=""):
         nonlocal last_report
@@ -315,7 +315,7 @@ def db_worker():
                     pass
 
         # Files saved on this PC earlier: send them first (oldest first), one file per round.
-        # New data waits until they are all in, so everything arrives in Azure in the right order.
+        # New data waits until they are all in, so everything arrives in the database in the right order.
         files = spool.files() if conn else []
         if conn:
             if files:
@@ -327,8 +327,8 @@ def db_worker():
                     spool.done(path)
                     state["db"]["written"] += len(b["pkts"])
                     left = spool.count()
-                    print(f"[DB] Sent {len(b['pkts']):,} saved packets from this PC to Azure"
-                          + (f" ({left:,} still waiting)" if left else " - all saved data is in Azure now"), flush=True)
+                    print(f"[DB] Sent {len(b['pkts']):,} saved packets from this PC to the database"
+                          + (f" ({left:,} still waiting)" if left else " - all saved data is in the database now"), flush=True)
                 except (EOFError, ValueError, OSError) as e:      # damaged file: keep it aside, never delete data
                     print(f"[DB] Could not read {path.name} ({e}); renamed to .bad, please report it", flush=True)
                     try:
@@ -392,7 +392,7 @@ def status_info():
         "waiting_on_pc": state["db"].get("spooled", 0), "packets_today": status_cache["packets_today"],
         "runs_today": status_cache["runs_today"], "db_size_gb": state["db"].get("size_gb"),
         "db_connected": state["db"].get("connected", False), "db_error": state["db"].get("error", ""),
-        "azure": state.get("azure", {}).get("msg", ""), "uptime_s": round(now - state["started"]),
+        "uptime_s": round(now - state["started"]),
     }
 
 
@@ -416,7 +416,7 @@ async def query(sql, params=()):
 
 
 def run_batch(queries):
-    """Several queries over one connection (saves a lot of round-trip time to Azure)."""
+    """Several queries over one connection (saves a lot of round-trip time to the server)."""
     conn = db_connect()
     try:
         ensure_schema(conn)

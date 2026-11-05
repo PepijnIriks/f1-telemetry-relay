@@ -1,14 +1,14 @@
 """
 Settings and shared state of the relay. Every other relay module imports from here, so there is one copy of:
 the config (config/config.env), the live state for the website, the run bookkeeping, the queue to the
-database writer and the Azure on/off manager.
+database writer and the database server helper (saves unsent data when the window closes).
 """
 import queue
 import sys
 import time
 
 import paths
-from azure_power import AzurePower
+from db_server import DatabaseServer
 from drivers import DriverList
 
 ROOT = paths.ROOT                  # the project folder (used by the other modules)
@@ -20,7 +20,7 @@ def load_config():
 
 
 CFG = load_config()
-# Demo mode (demo.bat): fake data from the simulator is shown everywhere, but NOTHING is written to Azure,
+# Demo mode (demo.bat): fake data from the simulator is shown everywhere, but NOTHING is written to the database,
 # so demos never end up in the real data. Reading (Races, Leaderboard) still works.
 DEMO = "--demo" in sys.argv
 
@@ -33,7 +33,7 @@ clients = set()
 live_buffer = []            # fast path: raw packets to the browser
 live_dirty = [False]
 live = {"session": {}, "lap": {}}
-db_queue = queue.Queue()    # slow path: to Azure
+db_queue = queue.Queue()    # slow path: to the database on the Educloud VM
 sess = {}                   # per-run metadata (for the races overview), key = run_id
 lapstate = {}               # per run: track when a lap is completed
 runs = {}                   # game session_uid -> run_id that is currently being recorded
@@ -63,7 +63,7 @@ DRIVERS = DriverList(CFG)
 loop_ref = []                  # the asyncio loop (so other threads can hand work to it)
 
 
-POWER = AzurePower(CFG, "", state)      # the server name is filled in once the Key Vault secret is read
+POWER = DatabaseServer(CFG, "", state)  # see src/db_server.py
 
 
 # New rows carry run_id; rows from before runs existed only have session_uid (and their run_id = session_uid).

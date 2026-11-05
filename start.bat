@@ -1,8 +1,9 @@
 @echo off
 REM F1 telemetry relay - double-click to start.
-REM The first time on a computer it installs what is needed (Python, Azure CLI, the Python packages)
-REM and sets up the database login. After that it just starts the relay, the website and the driver window.
-REM   start.bat            normal: game data is shown live and stored in Azure
+REM The first time on a computer it installs what is needed (Python, the Python packages)
+REM and asks for the database login (stored in the Windows Credential Manager, never in a file).
+REM After that it just starts the relay, the website and the driver window.
+REM   start.bat            normal: game data is shown live and stored in the database on Educloud
 REM   start.bat demo       demo with a fake game, NOTHING is stored (demo.bat does this)
 REM   start.bat simulate   fake game whose data IS stored (for testing)
 setlocal
@@ -25,22 +26,7 @@ pause
 exit /b 0
 :have_python
 
-REM ---- 2. Azure CLI (database login from Key Vault, database on/off, firewall). Not needed for a demo.
-if /i "%MODE%"=="demo" goto environment
-where az >nul 2>nul
-if not errorlevel 1 goto environment
-echo The Azure CLI is not installed. It is needed to store data in the Azure database.
-set ANSWER=
-set /p ANSWER=Install the Azure CLI now? (y/n):
-if /i not "%ANSWER%"=="y" goto environment
-winget install -e --id Microsoft.AzureCLI --accept-package-agreements --accept-source-agreements
-echo.
-echo The Azure CLI is installed. Close this window and double-click start.bat again;
-echo a browser then opens once to log in to Azure (use your Fontys account).
-pause
-exit /b 0
-
-REM ---- 3. The Python environment (.venv). Made again when it is missing or was copied from another computer.
+REM ---- 2. The Python environment (.venv). Made again when it is missing or was copied from another computer.
 :environment
 if not exist .venv\Scripts\python.exe goto make_venv
 .venv\Scripts\python.exe -c "import sys" >nul 2>nul
@@ -57,10 +43,12 @@ if errorlevel 1 goto venv_failed
 if errorlevel 1 goto packages_failed
 call .venv\Scripts\activate.bat
 
-REM ---- 4. Files of older versions (spool, exports, zips, logs) move into the folder data
+REM ---- 3. Files of older versions (spool, exports, zips, logs) move into the folder data
 python src\paths.py
+REM The Azure firewall task of older versions is not needed anymore (the database is on Educloud now)
+schtasks /Query /TN "F1 relay - Azure firewall" >nul 2>nul && schtasks /Delete /F /TN "F1 relay - Azure firewall" >nul 2>nul
 
-REM ---- 5. Demo: fake game + relay that stores nothing
+REM ---- 4. Demo: fake game + relay that stores nothing
 if /i not "%MODE%"=="demo" goto login
 start "F1 demo - fake game" /min cmd /c "timeout /t 4 /nobreak >nul & python src\simulate.py"
 start "" pythonw src\driver_menu.py
@@ -68,10 +56,10 @@ python src\relay.py --demo --driver Demo
 pause
 exit /b 0
 
-REM ---- 6. Database login from Azure Key Vault (the first time on a computer: set it up)
+REM ---- 5. Database login from the Windows Credential Manager (the first time on a computer: ask for it)
 :login
 python src\secrets_store.py --check
-if errorlevel 1 python src\setup_keyvault.py
+if errorlevel 1 python src\setup_database.py
 
 if /i "%MODE%"=="simulate" start "F1 simulation" cmd /k python src\simulate.py
 

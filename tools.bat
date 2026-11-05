@@ -21,32 +21,28 @@ echo     4  Remove the old uncompressed copy (after 3, checks again first)
 echo     5  Cancel an unfinished compression (never touches your data)
 echo.
 echo   Access
-echo     6  Key Vault setup (database login)
+echo     6  Database login of this PC (address of the Educloud VM, password)
 echo     7  Read-only account for the dashboard group
-echo     8  Firewall check every 15 minutes: turn on
-echo     9  Firewall check every 15 minutes: turn off
 echo.
 echo   Code
-echo    10  Run the tests
-echo    11  GitHub: get the newest version / put my changes on GitHub
+echo     8  Run the tests
+echo     9  GitHub: get the newest version / put my changes on GitHub
 echo.
 echo     0  Close
 echo.
 set CHOICE=
 set /p CHOICE=Choice:
 if "%CHOICE%"=="0" exit /b 0
-if "%CHOICE%"=="11" goto github
+if "%CHOICE%"=="9" goto github
 if not exist %PY% goto no_venv
 if "%CHOICE%"=="1" call :run src\inspect_db.py
 if "%CHOICE%"=="2" call :run src\export_csv.py
 if "%CHOICE%"=="3" call :run src\db_upgrade.py
 if "%CHOICE%"=="4" call :run src\db_upgrade.py --drop-old
 if "%CHOICE%"=="5" call :run src\db_upgrade.py --cancel
-if "%CHOICE%"=="6" call :run src\setup_keyvault.py
+if "%CHOICE%"=="6" call :run src\setup_database.py
 if "%CHOICE%"=="7" call :run src\create_readonly.py
-if "%CHOICE%"=="8" goto firewall_on
-if "%CHOICE%"=="9" goto firewall_off
-if "%CHOICE%"=="10" goto tests
+if "%CHOICE%"=="8" goto tests
 goto menu
 
 :run
@@ -59,20 +55,6 @@ goto :eof
 :no_venv
 echo.
 echo Double-click start.bat once first: it installs everything that is needed.
-pause
-goto menu
-
-REM ---------------------------------------------------------------- firewall task
-:firewall_on
-schtasks /Create /F /TN "F1 relay - Azure firewall" /SC MINUTE /MO 15 /TR "\"%~dp0.venv\Scripts\pythonw.exe\" \"%~dp0src\azure_firewall.py\" --quiet"
-if errorlevel 1 echo Creating the scheduled task failed.
-echo Checking the firewall right now...
-%PY% src\azure_firewall.py
-pause
-goto menu
-
-:firewall_off
-schtasks /Delete /F /TN "F1 relay - Azure firewall"
 pause
 goto menu
 
