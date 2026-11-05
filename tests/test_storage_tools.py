@@ -43,7 +43,7 @@ def test_tidy_moves_old_places_into_data(tmp_path, monkeypatch):
     old_spool, new_spool = tmp_path / "spool", tmp_path / "data" / "spool"
     old_log, new_log = tmp_path / "firewall.log", tmp_path / "data" / "firewall.log"
     old_spool.mkdir()
-    (old_spool / "1-10.pkl").write_bytes(b"race data not in Azure yet")
+    (old_spool / "1-10.pkl").write_bytes(b"race data not in the database yet")
     new_spool.mkdir(parents=True)
     (new_spool / "2-20.pkl").write_bytes(b"newer")
     old_log.write_text("old log")
@@ -52,7 +52,7 @@ def test_tidy_moves_old_places_into_data(tmp_path, monkeypatch):
     monkeypatch.setattr(paths, "OLD_PLACES", [(old_spool, new_spool), (old_log, new_log),
                                               (tmp_path / "missing", tmp_path / "data" / "x")])
     assert paths.tidy(say=lambda *_: None) == 2
-    assert (new_spool / "1-10.pkl").read_bytes() == b"race data not in Azure yet"
+    assert (new_spool / "1-10.pkl").read_bytes() == b"race data not in the database yet"
     assert (new_spool / "2-20.pkl").read_bytes() == b"newer"
     assert not old_spool.exists()                          # empty old folder removed
     assert new_log.read_text() == "new log"

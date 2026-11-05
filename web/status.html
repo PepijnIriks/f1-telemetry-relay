@@ -52,11 +52,11 @@ async function tick() {
          s.last_packet_age_s == null ? "no packets yet" : `last packet ${dur(s.last_packet_age_s)} ago`),
     card("Driving now", s.driver ? "ok" : "warn", esc(s.driver || "nobody"), esc([s.track, s.session].filter(Boolean).join(" · ") || "no session")),
     card("Database", s.db_connected ? "ok" : (s.db_error ? "bad" : "warn"), s.db_connected ? "connected" : "not connected",
-         esc(s.db_error || s.azure || "") || (s.db_size_gb != null ? `${s.db_size_gb} GB in use` : "")),
+         esc(s.db_error || "") || (s.db_size_gb != null ? `${s.db_size_gb} GB in use` : "")),
     card("Stored today", "", n(s.packets_today), `${n(s.runs_today)} runs today (packets)`),
-    card("This relay session", "", n(s.packets_this_relay_session), `${n(s.written_to_db)} written to Azure`),
+    card("This relay session", "", n(s.packets_this_relay_session), `${n(s.written_to_db)} written to the database`),
     card("Waiting on this PC", s.waiting_on_pc ? "warn" : "ok", n(s.waiting_on_pc),
-         s.waiting_on_pc ? "saved safely, sent to Azure when it is reachable" : "nothing waiting, everything is in Azure"),
+         s.waiting_on_pc ? "saved safely, sent to the database when it is reachable" : "nothing waiting, everything is in the database"),
   ].join("");
 }
 tick(); setInterval(tick, 2000);

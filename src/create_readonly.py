@@ -2,42 +2,35 @@
 Makes (or renews) a READ-ONLY database account for the other group's dashboard.
 
 The account "f1_reader" can read every table (also tables made later), but can never change or delete
-anything. Its login is stored in Azure Key Vault as secret "f1-readonly-url"; nothing is written to a file.
+anything. Its login is stored in the Windows Credential Manager of this PC (not in a file, not on GitHub) and
+shown once, so it can be given to the other group privately.
 
-Usage: tools.bat > "Read-only account for the dashboard group" (the database is started if it is off).
+Usage: tools.bat > "Read-only account for the dashboard group". Running it again makes a new password.
 """
-import os
 import secrets
 import string
 import sys
-import tempfile
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import secrets_store as ss  # noqa: E402
-import azure_firewall  # noqa: E402
+from paths import read_config  # noqa: E402
 
 ROLE = "f1_reader"
-SECRET = "f1-readonly-url"
 
 
 def main():
-    cfg = azure_firewall.read_cfg()
-    url, where, err = ss.database_url(cfg)
+    url, where, err = ss.database_url(read_config())
     if not url:
         sys.exit(f"No database login: {err}")
-    vault = cfg.get("KEYVAULT_NAME", "").strip()
-    if not vault:
-        sys.exit("KEYVAULT_NAME is empty in config/config.env (start.bat sets it up, or tools.bat > Key Vault setup)")
-    azure_firewall.ensure(cfg)
 
     import psycopg2
     from psycopg2 import sql
     try:
         conn = psycopg2.connect(url, connect_timeout=15)
     except Exception as e:
-        sys.exit(f"Connecting failed (is the database on? start start.bat first): {str(e).strip()[:200]}")
+        sys.exit(f"Connecting failed (is the Educloud VM on?): {str(e).strip()[:200]}")
 
     pw = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
     u = urlparse(url)
@@ -60,30 +53,23 @@ def main():
     conn.close()
 
     ro_url = f"postgresql://{ROLE}:{quote(pw, safe='')}@{u.hostname}:{u.port or 5432}/{dbname}?sslmode=require"
-    fd, tmp = tempfile.mkstemp(prefix="f1ro-", suffix=".txt")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(ro_url)
-        rc, _o, err = ss.az(["keyvault", "secret", "set", "--vault-name", vault, "--name", SECRET,
-                             "--file", tmp, "--encoding", "utf-8", "-o", "none"])
-    finally:
-        try:
-            os.remove(tmp)
-        except OSError:
-            pass
-    if rc != 0:
-        sys.exit(f"The account was {'renewed' if exists else 'made'}, but storing it in Key Vault failed: {err[:200]}\n"
-                 "Run this again (it makes a new password).")
+    err = ss.store(ro_url, ss.READONLY)
 
     print(f"\nRead-only account '{ROLE}' {'renewed (new password)' if exists else 'made'}.")
-    print(f"Its login is in Azure Key Vault '{vault}', secret '{SECRET}'.")
-    print("\nTo give it to the other group:")
-    print("  - show it (PowerShell, this PC):")
-    print(f"      az keyvault secret show --vault-name {vault} --name {SECRET} --query value -o tsv")
-    print("    and send it to them privately (not in a public chat or repo), or")
-    print("  - give their Azure account the role 'Key Vault Secrets User' on the vault, then they read it themselves.")
-    print("They also need their own IP in the database firewall (Azure portal > f1db > Networking).")
-
+    if err:
+        print(f"Note: {err}. Copy the login below now, it is not saved anywhere.")
+    else:
+        print("Its login is also kept in the Windows Credential Manager of this PC ('f1-telemetry-relay').")
+    print("\nLogin for the dashboard group (send it to them privately: not in a public chat or repo):\n")
+    print(f"  Host:      {u.hostname}")
+    print(f"  Port:      {u.port or 5432}")
+    print(f"  Database:  {dbname}")
+    print(f"  User:      {ROLE}")
+    print(f"  Password:  {pw}")
+    print("  SSL:       required (sslmode=require)")
+    print(f"\n  {ro_url}")
+    print("\nThey can connect from anywhere: the VM allows this account from every address, encrypted only.")
+    print("Run this again to make a new password (the old one then stops working).")
 
 if __name__ == "__main__":
     main()

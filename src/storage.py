@@ -12,10 +12,14 @@ def timescale_installed(cur):
 
 
 def timescale_available(cur):
-    """True when TimescaleDB is loaded on the server (on Azure: allowed in the server parameters
-    azure.extensions and shared_preload_libraries), so the extension can be used in this database."""
-    cur.execute("SELECT current_setting('shared_preload_libraries', true)")
-    loaded = "timescaledb" in (cur.fetchone()[0] or "")
+    """True when TimescaleDB is loaded on the server (on the Educloud VM: installed and put in
+    shared_preload_libraries by server/install-educloud.sh), so the extension can be used in this database."""
+    if timescale_installed(cur):
+        return True
+    # pg_settings hides this row (instead of raising an error) for accounts that may not read it
+    cur.execute("SELECT setting FROM pg_settings WHERE name = 'shared_preload_libraries'")
+    row = cur.fetchone()
+    loaded = "timescaledb" in ((row[0] if row else "") or "")
     cur.execute("SELECT 1 FROM pg_available_extensions WHERE name = 'timescaledb'")
     return loaded and cur.fetchone() is not None
 

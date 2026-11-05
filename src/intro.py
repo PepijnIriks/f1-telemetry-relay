@@ -90,7 +90,7 @@ def play():
         for i, line in enumerate(TITLE):
             out("  " + fg(GRADIENT[i % len(GRADIENT)]) + line + RESET + "\n")
             time.sleep(0.05)
-        out(f"\n  {fg(DIM)}F1 22 telemetry  ·  live dashboard  ·  Azure PostgreSQL{RESET}\n\n")
+        out(f"\n  {fg(DIM)}F1 22 telemetry  ·  live dashboard  ·  PostgreSQL on Educloud{RESET}\n\n")
         time.sleep(0.25)
 
         redraw(lights_block(0), first=True)

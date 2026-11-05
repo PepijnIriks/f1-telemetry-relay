@@ -2,12 +2,14 @@
     set TEST_DATABASE_URL=postgresql://postgres@localhost:5432/f1test
 They write packets, read them back, and do the whole compression upgrade (when TimescaleDB is there)."""
 import os
+from urllib.parse import urlparse
 
 import pytest
 
 URL = os.environ.get("TEST_DATABASE_URL", "")
-pytestmark = pytest.mark.skipif(not URL or "azure" in URL.lower(),
-                                reason="set TEST_DATABASE_URL to a local, empty test database")
+REAL = URL and urlparse(URL).path.lstrip("/") == "f1"     # the real database on the Educloud VM is called f1
+pytestmark = pytest.mark.skipif(not URL or REAL or "azure" in URL.lower(),
+                                reason="set TEST_DATABASE_URL to a local, empty test database (not f1)")
 
 
 @pytest.fixture()

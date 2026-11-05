@@ -286,7 +286,7 @@ class UdpProtocol(asyncio.DatagramProtocol):
         except struct.error:
             pass
 
-        # Only real driving counts as "racing" for the Azure on/off logic: car telemetry with the
+        # Only real driving counts as "racing" (POWER.race, see db_server.py): car telemetry with the
         # car moving and the session clock running. Menus, garage or a paused game don't count.
         if pid == 6 and live.get("speed", 0) > 0 and h["session_time"] != meta.get("race_st"):
             meta["race_st"] = h["session_time"]
